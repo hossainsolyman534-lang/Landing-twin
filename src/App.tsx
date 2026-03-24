@@ -16,52 +16,169 @@ import {
   ChevronRight,
   Phone,
   MapPin,
-  User,
-  Ruler
+  User as UserIcon,
+  Ruler,
+  LogIn,
+  Package
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { db, auth, collection, doc, getDoc, getDocs, setDoc, onSnapshot, query, orderBy, signInWithPopup, googleProvider, OperationType, handleFirestoreError } from './firebase';
+import AdminPanel from './components/AdminPanel';
 
-const IMAGES = [
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/0.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/1.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/2.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/3.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/4.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/5.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/6.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/7.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/8.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/9.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/10.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/11.png",
-  "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/attachments/733914356352/ais-dev-3vynmirhdlqrft35rpy3dg/1742755513567/12.png",
-];
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock: number;
+  imageUrl: string;
+  description: string;
+}
+
+interface Content {
+  heroTitle: string;
+  heroSubtitle: string;
+  offerText: string;
+  offerPrice: number;
+  originalPrice: number;
+}
 
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [path, setPath] = useState(window.location.pathname);
   const [visitCount, setVisitCount] = useState(1);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [content, setContent] = useState<Content>({
+    heroTitle: 'আপনার ছোট্ট মেয়ের জন্য পারফেক্ট কটন ড্রেস 👗',
+    heroSubtitle: 'নরম, আরামদায়ক এবং স্টাইলিশ – সারাদিন আরামে থাকবে আপনার বাচ্চা। গরমেও থাকবে সতেজ।',
+    offerText: 'সীমিত সময়ের জন্য ডিসকাউন্ট! স্টক শেষ হওয়ার আগে অর্ডার করুন।',
+    offerPrice: 1200,
+    originalPrice: 1500
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     address: '',
-    size: '২-৪ বছর'
+    size: '২-৪ বছর',
+    productId: ''
   });
 
   useEffect(() => {
+    const handleLocationChange = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handleLocationChange);
+    
     const count = parseInt(localStorage.getItem('visit_count') || '0');
     const newCount = count + 1;
     localStorage.setItem('visit_count', newCount.toString());
     setVisitCount(newCount);
+
+    // Auth listener
+    const unsubAuth = auth.onAuthStateChanged(async (user) => {
+      setUser(user);
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const isAdminUser = userDoc.exists() && userDoc.data().role === 'admin' || user.email === 'hossainsolyman534@gmail.com';
+        setIsAdmin(isAdminUser);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+
+    // Firestore listeners
+    const unsubContent = onSnapshot(doc(db, 'content', 'landingPage'), (doc) => {
+      if (doc.exists()) setContent(doc.data() as Content);
+    });
+
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+      setProducts(prods);
+      if (prods.length > 0 && !formData.productId) {
+        setFormData(prev => ({ ...prev, productId: prods[0].id }));
+      }
+    });
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      unsubAuth();
+      unsubContent();
+      unsubProducts();
+    };
   }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Login failed', error);
+    }
+  };
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.phone || !formData.address) {
+      alert('সবগুলো ঘর পূরণ করুন');
+      return;
+    }
+
+    const selectedProduct = products.find(p => p.id === formData.productId) || products[0];
+
+    try {
+      const orderRef = doc(collection(db, 'orders'));
+      await setDoc(orderRef, {
+        customerName: formData.name,
+        customerPhone: formData.phone,
+        customerAddress: formData.address,
+        productId: formData.productId || 'default',
+        productName: selectedProduct?.name || 'Cotton Dress',
+        quantity: 1,
+        totalPrice: content.offerPrice,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+      alert('অর্ডার সফল হয়েছে! আমরা শীঘ্রই আপনার সাথে যোগাযোগ করব।');
+      setFormData({ name: '', phone: '', address: '', size: '২-৪ বছর', productId: products[0]?.id || '' });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'orders');
+    }
+  };
 
   const scrollToOrder = () => {
     document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  if (path === '/admin') {
+    if (!isAdmin) {
+      return (
+        <div className="min-h-screen bg-rose-50 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center">
+            <LogIn className="w-16 h-16 text-rose-500 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold mb-4">Admin Login</h1>
+            <p className="text-slate-600 mb-8">Please login with your admin account to access the dashboard.</p>
+            <button
+              onClick={handleLogin}
+              className="w-full py-4 bg-rose-500 text-white font-bold rounded-2xl shadow-lg hover:bg-rose-600 transition-all flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-5 h-5" /> Login with Google
+            </button>
+            <button
+              onClick={() => { window.location.pathname = '/'; }}
+              className="mt-4 text-slate-400 hover:text-rose-500 transition-colors"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <AdminPanel />;
+  }
+
   // Section Components
   const HeroSection = () => {
-    let headline = "আপনার ছোট্ট মেয়ের জন্য পারফেক্ট কটন ড্রেস 👗";
-    if (visitCount === 2) headline = "গরমে বাচ্চার আরামের সেরা সমাধান – 100% কটন ড্রেস।";
-    if (visitCount === 3) headline = "ডেইলি ইউজের জন্য সবচেয়ে আরামদায়ক কিডস ড্রেস।";
+    let headline = content.heroTitle;
+    if (visitCount === 2 && !content.heroTitle.includes('গরমে')) headline = "গরমে বাচ্চার আরামের সেরা সমাধান – 100% কটন ড্রেস।";
+    if (visitCount === 3 && !content.heroTitle.includes('ডেইলি')) headline = "ডেইলি ইউজের জন্য সবচেয়ে আরামদায়ক কিডস ড্রেস।";
 
     return (
       <section key="hero" className="relative overflow-hidden bg-white pt-16 pb-24 lg:pt-24 lg:pb-32">
@@ -80,7 +197,7 @@ export default function App() {
                 {headline}
               </h1>
               <p className="text-lg lg:text-xl text-slate-600 mb-8 max-w-lg mx-auto lg:mx-0">
-                নরম, আরামদায়ক এবং স্টাইলিশ – সারাদিন আরামে থাকবে আপনার বাচ্চা। গরমেও থাকবে সতেজ।
+                {content.heroSubtitle}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10">
@@ -109,24 +226,19 @@ export default function App() {
               </div>
             </motion.div>
 
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="lg:w-1/2 relative"
-            >
-              <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl border-8 border-white">
-                <img 
-                  src={IMAGES[0]} 
-                  alt="Kids Cotton Dress" 
-                  className="w-full h-auto object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-              <div className="absolute -top-6 -right-6 bg-yellow-400 text-slate-900 font-black p-6 rounded-full shadow-xl z-20 transform rotate-12 animate-pulse">
-                স্পেশাল<br/>অফার!
-              </div>
-            </motion.div>
+          <div className="lg:w-1/2 relative">
+            <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl border-8 border-white">
+              <img 
+                src={products[0]?.imageUrl || "https://picsum.photos/seed/dress/800/800"} 
+                alt="Kids Cotton Dress" 
+                className="w-full h-auto object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="absolute -top-6 -right-6 bg-yellow-400 text-slate-900 font-black p-6 rounded-full shadow-xl z-20 transform rotate-12 animate-pulse">
+              ৳{content.offerPrice}<br/><span className="text-xs line-through opacity-50">৳{content.originalPrice}</span>
+            </div>
+          </div>
           </div>
         </div>
       </section>
@@ -177,7 +289,7 @@ export default function App() {
         <div className="flex flex-col lg:flex-row items-center gap-16">
           <div className="lg:w-1/2">
             <img 
-              src={IMAGES[1]} 
+              src={products[1]?.imageUrl || "https://picsum.photos/seed/comfort/800/800"} 
               alt="Comfortable Cotton Dress" 
               className="rounded-3xl shadow-xl"
               referrerPolicy="no-referrer"
@@ -224,20 +336,26 @@ export default function App() {
         </div>
         
         <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-          {IMAGES.slice(2).map((img, i) => (
+          {products.length > 0 ? products.map((prod, i) => (
             <motion.div 
               whileHover={{ scale: 1.02 }}
-              key={i} 
+              key={prod.id} 
               className="break-inside-avoid rounded-2xl overflow-hidden shadow-md bg-white p-2"
             >
               <img 
-                src={img} 
-                alt={`Dress Design ${i}`} 
+                src={prod.imageUrl || `https://picsum.photos/seed/${prod.id}/400/600`} 
+                alt={prod.name} 
                 className="w-full h-auto rounded-xl"
                 referrerPolicy="no-referrer"
               />
+              <div className="p-4">
+                <h3 className="font-bold text-slate-800">{prod.name}</h3>
+                <p className="text-rose-600 font-bold">৳{prod.price}</p>
+              </div>
             </motion.div>
-          ))}
+          )) : (
+            <div className="text-center text-slate-400 py-12">কোনো প্রোডাক্ট পাওয়া যায়নি</div>
+          )}
         </div>
         
         <div className="mt-12 text-center">
@@ -329,9 +447,13 @@ export default function App() {
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ repeat: Infinity, duration: 2 }}
         >
-          <h2 className="text-4xl lg:text-5xl font-black mb-6">🎉 আজকের স্পেশাল অফার</h2>
+          <h2 className="text-4xl lg:text-5xl font-black mb-6">🎉 {content.offerText}</h2>
         </motion.div>
         <p className="text-xl mb-8 opacity-90">সীমিত সময়ের জন্য ডিসকাউন্ট! স্টক শেষ হওয়ার আগে অর্ডার করুন।</p>
+        <div className="flex items-center justify-center gap-4 mb-8">
+          <span className="text-4xl font-black">৳{content.offerPrice}</span>
+          <span className="text-xl line-through opacity-60">৳{content.originalPrice}</span>
+        </div>
         <button 
           onClick={scrollToOrder}
           className="px-10 py-5 bg-white text-rose-600 font-black text-xl rounded-2xl shadow-2xl hover:bg-rose-50 transition-colors"
@@ -374,14 +496,15 @@ export default function App() {
           </div>
 
           <div className="lg:w-1/2 bg-white p-8 rounded-3xl shadow-lg">
-            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-6" onSubmit={handleSubmitOrder}>
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <User size={16} /> আপনার নাম
+                  <UserIcon size={16} /> আপনার নাম
                 </label>
                 <input 
                   type="text" 
                   placeholder="নাম লিখুন"
+                  required
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -394,6 +517,7 @@ export default function App() {
                 <input 
                   type="tel" 
                   placeholder="মোবাইল নাম্বার লিখুন"
+                  required
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all"
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
@@ -406,26 +530,43 @@ export default function App() {
                 <textarea 
                   placeholder="সম্পূর্ণ ঠিকানা লিখুন"
                   rows={3}
+                  required
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all"
                   value={formData.address}
                   onChange={(e) => setFormData({...formData, address: e.target.value})}
                 ></textarea>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <Ruler size={16} /> সাইজ নির্বাচন করুন
-                </label>
-                <select 
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all bg-white"
-                  value={formData.size}
-                  onChange={(e) => setFormData({...formData, size: e.target.value})}
-                >
-                  <option>২-৪ বছর</option>
-                  <option>৪-৬ বছর</option>
-                  <option>৬-৮ বছর</option>
-                  <option>৮-১০ বছর</option>
-                  <option>১০-১২ বছর</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                    <Ruler size={16} /> সাইজ
+                  </label>
+                  <select 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all bg-white"
+                    value={formData.size}
+                    onChange={(e) => setFormData({...formData, size: e.target.value})}
+                  >
+                    <option>২-৪ বছর</option>
+                    <option>৪-৬ বছর</option>
+                    <option>৬-৮ বছর</option>
+                    <option>৮-১০ বছর</option>
+                    <option>১০-১২ বছর</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                    <Package size={16} /> প্রোডাক্ট
+                  </label>
+                  <select 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all bg-white"
+                    value={formData.productId}
+                    onChange={(e) => setFormData({...formData, productId: e.target.value})}
+                  >
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <button 
                 type="submit"
