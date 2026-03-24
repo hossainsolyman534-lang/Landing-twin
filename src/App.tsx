@@ -112,27 +112,33 @@ export default function App() {
                 </div>
               </div>
             </div>
-            <div className="lg:w-1/2 grid grid-cols-2 gap-4">
-              <img 
-                src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80" 
-                alt="Store 1" 
-                className="rounded-2xl shadow-lg h-64 w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <img 
-                src="https://images.unsplash.com/photo-1604719312563-8912e9223c6a?auto=format&fit=crop&w=600&q=80" 
-                alt="Store 2" 
-                className="rounded-2xl shadow-lg h-64 w-full object-cover mt-8"
-                referrerPolicy="no-referrer"
-              />
+            <div className="lg:w-1/2">
+              <div className="relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1200&q=80" 
+                  alt="Modern Supermarket" 
+                  className="rounded-[2.5rem] shadow-2xl relative z-10"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute -bottom-6 -right-6 w-full h-full bg-red-600/10 rounded-[2.5rem] -z-0"></div>
+                <div className="absolute -top-6 -left-6 w-32 h-32 bg-red-600/20 blur-3xl rounded-full"></div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* INVESTOR VS PARTNER */}
-      <section className="py-20 bg-slate-900 text-white">
-        <div className="container mx-auto px-4">
+      <section className="py-20 bg-slate-950 text-white overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+          <img 
+            src="https://images.unsplash.com/photo-1521791136364-798a7bc0d262?auto=format&fit=crop&w=1920&q=80" 
+            alt="Collaboration Background" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <h2 className="text-3xl md:text-5xl font-black mb-16 text-center">
             <span className="text-green-500">🤝 ইনভেস্টর না, পার্টনার</span> — পার্থক্যটা এখানেই
           </h2>
@@ -178,54 +184,123 @@ export default function App() {
       {/* WHY PARTNERS? */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-black mb-12 flex items-center justify-center gap-3">
-              <Briefcase className="text-blue-600" /> কেন আমরা পার্টনার খুঁজছি?
-            </h2>
-            <p className="text-xl text-slate-600 mb-12">আমরা এমন মানুষদের সাথে কাজ করতে চাই—</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-              {[
-                "যারা নিজের ব্যবসা গড়তে চান",
-                "যারা শুধু লাভ না, গ্রোথ বুঝেন",
-                "যারা লোকাল মার্কেট নিয়ে কাজ করতে আগ্রহী"
-              ].map((text, i) => (
-                <div key={i} className="p-8 bg-slate-50 rounded-3xl border border-slate-100 flex flex-col items-center">
-                  <CheckCircle className="text-green-600 mb-4" size={32} />
-                  <p className="font-bold text-lg">{text}</p>
-                </div>
-              ))}
+          <div className="flex flex-col lg:flex-row gap-16 items-center max-w-6xl mx-auto">
+            <div className="lg:w-1/2">
+              <div className="relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&w=1000&q=80" 
+                  alt="Store Partnership" 
+                  className="rounded-[3rem] shadow-2xl"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl"></div>
+              </div>
             </div>
-            
-            <div className="bg-blue-600 text-white p-10 rounded-[2.5rem] inline-block">
-              <p className="text-2xl font-bold italic">
-                "কারণ আমরা বিশ্বাস করি— <br/>
-                👉 একজন committed পার্টনারই একটি আউটলেটকে দ্রুত সফল করতে পারে"
-              </p>
+            <div className="lg:w-1/2">
+              <h2 className="text-3xl md:text-4xl font-black mb-8 flex items-center gap-3">
+                <Briefcase className="text-blue-600" /> কেন আমরা পার্টনার খুঁজছি?
+              </h2>
+              <p className="text-xl text-slate-600 mb-8">আমরা এমন মানুষদের সাথে কাজ করতে চাই—</p>
+              
+              <div className="space-y-4 mb-10">
+                {[
+                  "যারা নিজের ব্যবসা গড়তে চান",
+                  "যারা শুধু লাভ না, গ্রোথ বুঝেন",
+                  "যারা লোকাল মার্কেট নিয়ে কাজ করতে আগ্রহী"
+                ].map((text, i) => (
+                  <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                    <CheckCircle className="text-green-600 shrink-0" size={24} />
+                    <p className="font-bold text-lg">{text}</p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="bg-blue-600 text-white p-8 rounded-3xl shadow-xl shadow-blue-900/20">
+                <p className="text-xl font-bold italic">
+                  "কারণ আমরা বিশ্বাস করি— <br/>
+                  👉 একজন committed পার্টনারই একটি আউটলেটকে দ্রুত সফল করতে পারে"
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* PARTNERSHIP OPPORTUNITIES */}
-      <section className="py-20 bg-slate-100">
+      {/* LEGAL SECURITY */}
+      <section className="py-20 bg-slate-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-black mb-12 text-center">পার্টনারশিপ সুযোগ</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { title: "নিজের সুপার শপ", desc: "আপনার মালিকানাধীন একটি সফল ব্যবসা।" },
-              { title: "কম ইনভেস্টে শুরু", desc: "সাশ্রয়ী মূলধনে ব্যবসা শুরু করার সুযোগ।" },
-              { title: "প্রুভেন সিস্টেম", desc: "আমাদের সফল বিজনেস মডেল অনুসরণ করুন।" },
-              { title: "মার্কেটিং সাপোর্ট", desc: "আমরা আপনাকে কাস্টমার পেতে সাহায্য করবো।" }
-            ].map((item, i) => (
-              <div key={i} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
-                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle size={32} />
-                </div>
-                <h3 className="text-xl font-bold mb-4">{item.title}</h3>
-                <p className="text-slate-600">{item.desc}</p>
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-black mb-6 flex items-center justify-center gap-3">
+                <CheckCircle className="text-blue-600" /> 🔒 আইনগত নিরাপত্তা ও চুক্তি ব্যবস্থা
+              </h2>
+              <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+                আমাদের সাথে পার্টনারশিপ সম্পূর্ণভাবে বাংলাদেশ সরকারের প্রচলিত আইন ও বিধিমালা অনুযায়ী পরিচালিত হবে।
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-200">
+                <h3 className="text-2xl font-black mb-8 flex items-center gap-2">
+                  <ArrowRight className="text-green-600" /> প্রতিটি পার্টনারের সাথে একটি লিখিত চুক্তি (Legal Agreement) করা হবে, যেখানে স্পষ্টভাবে উল্লেখ থাকবে:
+                </h3>
+                <ul className="space-y-4">
+                  {[
+                    { icon: "📄", text: "বিনিয়োগের পরিমাণ" },
+                    { icon: "📊", text: "প্রফিট ও শেয়ারিং মডেল" },
+                    { icon: "🏬", text: "আউটলেট পরিচালনার দায়িত্ব" },
+                    { icon: "⏳", text: "চুক্তির মেয়াদ" },
+                    { icon: "🔁", text: "শর্তাবলী ও দায়িত্বসমূহ" }
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-lg font-bold">
+                      <span className="text-2xl">{item.icon}</span> {item.text}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+
+              <div className="space-y-8">
+                <div className="relative group">
+                  <img 
+                    src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80" 
+                    alt="Legal Contract" 
+                    className="rounded-[2.5rem] shadow-2xl transition-transform group-hover:scale-[1.02] duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-blue-600/10 rounded-[2.5rem]"></div>
+                </div>
+
+                <div className="bg-blue-600 text-white p-10 rounded-[2.5rem] shadow-xl">
+                  <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
+                    🤝 আপনার নিরাপত্তা, আমাদের অঙ্গীকার
+                  </h3>
+                  <p className="mb-8 text-blue-100">আমরা বিশ্বাস করি একটি সফল পার্টনারশিপের ভিত্তি হচ্ছে স্বচ্ছতা (Transparency) এবং বিশ্বাস (Trust)</p>
+                  <ul className="space-y-4">
+                    {[
+                      "প্রতিটি শর্ত পরিষ্কারভাবে লিখিত থাকবে",
+                      "কোন হিডেন কন্ডিশন থাকবে না",
+                      "পার্টনার হিসেবে আপনার অধিকার সংরক্ষিত থাকবে",
+                      "প্রয়োজন হলে সরাসরি আলোচনা ও ক্ল্যারিফিকেশন করা যাবে"
+                    ].map((text, i) => (
+                      <li key={i} className="flex items-center gap-3">
+                        <CheckCircle className="text-blue-300 shrink-0" size={20} />
+                        <span>{text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="bg-white p-8 rounded-3xl border border-slate-200">
+                  <h3 className="text-xl font-black mb-4 flex items-center gap-2">
+                    🛡️ কেন এটি গুরুত্বপূর্ণ?
+                  </h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    অনেক সময় অনানুষ্ঠানিকভাবে ব্যবসা শুরু হলে ভবিষ্যতে ভুল বোঝাবুঝি তৈরি হয়। <br/>
+                    <span className="font-bold text-slate-900 mt-2 block">👉 আমরা সেই ঝুঁকি এড়াতে শুরু থেকেই একটি স্ট্রাকচার্ড ও লিগ্যাল ফ্রেমওয়ার্কে কাজ করি</span>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -350,7 +425,10 @@ export default function App() {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-12">
-              <p className="text-orange-400 font-black text-2xl md:text-3xl mb-6">
+              <p className="text-blue-400 font-black text-2xl md:text-3xl mb-6">
+                📌 আপনি শুধু একটি ব্যবসায় যোগ দিচ্ছেন না—আপনি একটি সুরক্ষিত, স্বচ্ছ এবং পরিকল্পিত পার্টনারশিপে যুক্ত হচ্ছেন।
+              </p>
+              <p className="text-orange-400 font-black text-xl md:text-2xl mb-8">
                 🔥 আজ আপনি একজন পার্টনার হিসেবে শুরু করলে, আগামী ১৮ মাসে একটি বড় সুপার শপ নেটওয়ার্কের অংশ হতে পারবেন।
               </p>
               <h2 className="text-3xl md:text-4xl font-black mb-4">পার্টনার হতে আবেদন করুন</h2>
