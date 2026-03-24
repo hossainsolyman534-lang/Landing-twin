@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -12,7 +12,53 @@ import {
   DollarSign,
   Briefcase
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+
+const CountUp = ({ value, duration = 1 }: { value: number; duration?: number }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = Math.floor(value);
+    if (start === end) {
+      setCount(end);
+      return;
+    }
+
+    let totalMiliseconds = duration * 1000;
+    let incrementTime = (totalMiliseconds / end) * 10;
+    
+    let step = Math.max(1, Math.floor(end / 100));
+    incrementTime = (totalMiliseconds / (end / step));
+
+    let timer = setInterval(() => {
+      start += step;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(start);
+      }
+    }, incrementTime);
+
+    return () => clearInterval(timer);
+  }, [value, duration]);
+
+  return <span>{count.toLocaleString()}</span>;
+};
+
+const FadeInSection = ({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) => (
+  <motion.section
+    id={id}
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-100px" }}
+    transition={{ duration: 0.6, ease: "easeOut" }}
+    className={className}
+  >
+    {children}
+  </motion.section>
+);
 
 export default function App() {
   const [investment, setInvestment] = useState<string>('');
@@ -35,11 +81,14 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-green-100 selection:text-green-900">
       {/* HERO */}
-      <section className="relative bg-slate-950 text-white overflow-hidden">
+      <section className="relative bg-slate-950 text-white overflow-hidden min-h-[80vh] flex items-center">
         <div className="absolute inset-0 opacity-20">
-          <img 
+          <motion.img 
+            initial={{ scale: 1.1 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 10, repeat: Infinity, repeatType: "reverse" }}
             src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1920&q=80" 
             alt="Super shop background" 
             className="w-full h-full object-cover"
@@ -50,40 +99,50 @@ export default function App() {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-6xl font-black mb-6 leading-tight"
+            transition={{ duration: 0.8 }}
+            className="text-4xl md:text-7xl font-black mb-8 leading-tight tracking-tight"
           >
-            রানিং সুপার শপে পার্টনার হওয়ার সুযোগ
+            রানিং সুপার শপে <br/> <span className="text-green-500">পার্টনার</span> হওয়ার সুযোগ
           </motion.h1>
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-xl md:text-2xl text-slate-300 mb-10 max-w-2xl mx-auto space-y-2"
+            transition={{ delay: 0.2, duration: 0.8 }}
+            className="text-xl md:text-3xl text-slate-300 mb-12 max-w-3xl mx-auto space-y-3"
           >
-            <p>প্রথম মাস থেকেই আয় শুরু</p>
-            <p className="text-green-400 font-bold">👉 সীমিত স্লট — এখনই আবেদন করুন</p>
+            <p className="font-medium">প্রথম মাস থেকেই আয় শুরু</p>
+            <p className="text-green-400 font-black bg-green-400/10 py-2 px-6 rounded-full inline-block">👉 সীমিত স্লট — এখনই আবেদন করুন</p>
           </motion.div>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="flex flex-col sm:flex-row gap-6 justify-center"
+          >
+            <motion.a 
+              whileHover={{ scale: 1.05, backgroundColor: "#15803d" }}
+              whileTap={{ scale: 0.95 }}
               href="#form" 
-              className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center justify-center gap-2"
+              className="px-10 py-5 bg-green-600 text-white font-black text-xl rounded-2xl transition-colors shadow-2xl shadow-green-900/40 flex items-center justify-center gap-3"
             >
-              পার্টনার হতে চাই <ArrowRight size={20} />
-            </a>
-            <a 
+              পার্টনার হতে চাই <ArrowRight size={24} />
+            </motion.a>
+            <motion.a 
+              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.2)" }}
+              whileTap={{ scale: 0.95 }}
               href="https://wa.me/8801911110476" 
               target="_blank"
               rel="noopener noreferrer"
-              className="px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-bold rounded-xl transition-all border border-white/20 flex items-center justify-center gap-2"
+              className="px-10 py-5 bg-white/10 backdrop-blur-md text-white font-black text-xl rounded-2xl transition-colors border border-white/20 flex items-center justify-center gap-3"
             >
-              <MessageCircle size={20} /> WhatsApp করুন
-            </a>
-          </div>
+              <MessageCircle size={24} /> WhatsApp করুন
+            </motion.a>
+          </motion.div>
         </div>
       </section>
 
       {/* LOCATION & EXPANSION */}
-      <section className="py-20">
+      <FadeInSection className="py-20">
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row gap-12 items-center">
             <div className="lg:w-1/2">
@@ -114,7 +173,9 @@ export default function App() {
             </div>
             <div className="lg:w-1/2">
               <div className="relative">
-                <img 
+                <motion.img 
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: 0.5 }}
                   src="https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1200&q=80" 
                   alt="Modern Supermarket" 
                   className="rounded-[2.5rem] shadow-2xl relative z-10"
@@ -126,10 +187,10 @@ export default function App() {
             </div>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* INVESTOR VS PARTNER */}
-      <section className="py-20 bg-slate-950 text-white overflow-hidden relative">
+      <FadeInSection className="py-20 bg-slate-950 text-white overflow-hidden relative">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
           <img 
             src="https://images.unsplash.com/photo-1521791136364-798a7bc0d262?auto=format&fit=crop&w=1920&q=80" 
@@ -144,16 +205,22 @@ export default function App() {
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl mx-auto">
-            <div className="bg-white/5 p-10 rounded-[2.5rem] border border-white/10">
+            <motion.div 
+              whileHover={{ y: -10 }}
+              className="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 transition-colors hover:bg-white/10"
+            >
               <h3 className="text-2xl font-bold mb-8 text-slate-400">একজন ইনভেস্টর সাধারণত শুধু দেখেন—</h3>
               <ul className="space-y-6">
                 <li className="flex items-center gap-4 text-xl">
                   <span className="text-3xl">📊</span> লাভ হচ্ছে কি না, কত রিটার্ন আসছে
                 </li>
               </ul>
-            </div>
+            </motion.div>
             
-            <div className="bg-green-600 p-10 rounded-[2.5rem] shadow-2xl shadow-green-900/40">
+            <motion.div 
+              whileHover={{ y: -10 }}
+              className="bg-green-600 p-10 rounded-[2.5rem] shadow-2xl shadow-green-900/40"
+            >
               <h3 className="text-2xl font-bold mb-8 text-green-100">কিন্তু একজন পার্টনার দেখেন—</h3>
               <ul className="space-y-6">
                 <li className="flex items-center gap-4 text-xl">
@@ -169,7 +236,7 @@ export default function App() {
                   <span className="text-3xl">🏬</span> কীভাবে একটি আউটলেট সফল করা যায়
                 </li>
               </ul>
-            </div>
+            </motion.div>
           </div>
           
           <div className="mt-16 text-center">
@@ -179,15 +246,17 @@ export default function App() {
             </p>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* WHY PARTNERS? */}
-      <section className="py-20 bg-white">
+      <FadeInSection className="py-20 bg-white">
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row gap-16 items-center max-w-6xl mx-auto">
             <div className="lg:w-1/2">
               <div className="relative">
-                <img 
+                <motion.img 
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: 0.5 }}
                   src="https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&w=1000&q=80" 
                   alt="Store Partnership" 
                   className="rounded-[3rem] shadow-2xl"
@@ -208,10 +277,14 @@ export default function App() {
                   "যারা শুধু লাভ না, গ্রোথ বুঝেন",
                   "যারা লোকাল মার্কেট নিয়ে কাজ করতে আগ্রহী"
                 ].map((text, i) => (
-                  <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                  <motion.div 
+                    key={i} 
+                    whileHover={{ x: 10 }}
+                    className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 transition-colors hover:bg-slate-100"
+                  >
                     <CheckCircle className="text-green-600 shrink-0" size={24} />
                     <p className="font-bold text-lg">{text}</p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
               
@@ -224,10 +297,10 @@ export default function App() {
             </div>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* LEGAL SECURITY */}
-      <section className="py-20 bg-slate-50">
+      <FadeInSection className="py-20 bg-slate-50">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-16">
@@ -252,22 +325,28 @@ export default function App() {
                     { icon: "⏳", text: "চুক্তির মেয়াদ" },
                     { icon: "🔁", text: "শর্তাবলী ও দায়িত্বসমূহ" }
                   ].map((item, i) => (
-                    <li key={i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-lg font-bold">
+                    <motion.li 
+                      key={i} 
+                      whileHover={{ scale: 1.02 }}
+                      className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-lg font-bold transition-colors hover:bg-slate-100"
+                    >
                       <span className="text-2xl">{item.icon}</span> {item.text}
-                    </li>
+                    </motion.li>
                   ))}
                 </ul>
               </div>
 
               <div className="space-y-8">
                 <div className="relative group">
-                  <img 
+                  <motion.img 
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ duration: 0.5 }}
                     src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80" 
                     alt="Legal Contract" 
-                    className="rounded-[2.5rem] shadow-2xl transition-transform group-hover:scale-[1.02] duration-500"
+                    className="rounded-[2.5rem] shadow-2xl"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute inset-0 bg-blue-600/10 rounded-[2.5rem]"></div>
+                  <div className="absolute inset-0 bg-blue-600/10 rounded-[2.5rem] pointer-events-none"></div>
                 </div>
 
                 <div className="bg-blue-600 text-white p-10 rounded-[2.5rem] shadow-xl">
@@ -303,10 +382,10 @@ export default function App() {
             </div>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* INVESTMENT */}
-      <section className="py-20">
+      <FadeInSection className="py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto bg-slate-900 text-white rounded-[2.5rem] p-10 md:p-16 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-green-600/20 blur-[100px]"></div>
@@ -335,7 +414,9 @@ export default function App() {
                 </div>
               </div>
               <div className="flex-1">
-                <img 
+                <motion.img 
+                  whileHover={{ scale: 1.05, rotate: 2 }}
+                  transition={{ duration: 0.5 }}
                   src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80" 
                   alt="Business partnership" 
                   className="rounded-2xl shadow-2xl"
@@ -345,10 +426,10 @@ export default function App() {
             </div>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* PROFIT CALCULATOR */}
-      <section className="py-20 bg-slate-100">
+      <FadeInSection className="py-20 bg-slate-100">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto bg-white p-10 md:p-16 rounded-[2.5rem] shadow-xl border border-slate-200">
             <h2 className="text-3xl md:text-4xl font-black mb-8 text-center flex items-center justify-center gap-3">
@@ -365,12 +446,14 @@ export default function App() {
                   className="w-full px-6 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
               </div>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={calculateProfit}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20"
               >
                 ক্যালকুলেট করুন
-              </button>
+              </motion.button>
               
               {result && (
                 <motion.div 
@@ -381,11 +464,11 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-blue-600 text-sm mb-1">মাসিক প্রফিট</p>
-                      <p className="text-2xl font-black text-blue-900">৳{result.monthly.toFixed(0)}</p>
+                      <p className="text-2xl font-black text-blue-900">৳<CountUp value={result.monthly} /></p>
                     </div>
                     <div>
                       <p className="text-blue-600 text-sm mb-1">বার্ষিক প্রফিট</p>
-                      <p className="text-2xl font-black text-blue-900">৳{result.yearly.toFixed(0)}</p>
+                      <p className="text-2xl font-black text-blue-900">৳<CountUp value={result.yearly} /></p>
                     </div>
                   </div>
                 </motion.div>
@@ -393,10 +476,10 @@ export default function App() {
             </div>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* FAQ */}
-      <section className="py-20">
+      <FadeInSection className="py-20">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-black mb-12 text-center flex items-center justify-center gap-3">
             <HelpCircle className="text-purple-600" /> প্রশ্ন ও উত্তর
@@ -408,20 +491,24 @@ export default function App() {
               { q: "আমি কি নতুন হলেও পারবো?", a: "হ্যাঁ, আমরা গাইডলাইন দিবো" },
               { q: "প্রফিট কত হতে পারে?", a: "গড়ে ~১১% (পারফরম্যান্স অনুযায়ী পরিবর্তন হতে পারে)" }
             ].map((item, i) => (
-              <div key={i} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+              <motion.div 
+                key={i} 
+                whileHover={{ y: -5 }}
+                className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 transition-shadow hover:shadow-md"
+              >
                 <h3 className="text-lg font-bold mb-3 flex items-start gap-3">
                   <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs shrink-0 mt-1">Q</span>
                   {item.q}
                 </h3>
                 <p className="text-slate-600 pl-9">{item.a}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* FORM */}
-      <section id="form" className="py-20 bg-slate-900 text-white">
+      <FadeInSection id="form" className="py-20 bg-slate-900 text-white">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-12">
@@ -464,16 +551,18 @@ export default function App() {
                   className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
                 />
               </div>
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02, backgroundColor: "#15803d" }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full py-5 bg-green-600 hover:bg-green-700 text-white font-black text-xl rounded-xl transition-all shadow-lg shadow-green-900/20"
+                className="w-full py-5 bg-green-600 text-white font-black text-xl rounded-xl transition-all shadow-lg shadow-green-900/20"
               >
                 সাবমিট করুন
-              </button>
+              </motion.button>
             </form>
           </div>
         </div>
-      </section>
+      </FadeInSection>
 
       {/* FOOTER */}
       <footer className="py-10 bg-slate-950 text-slate-500 text-center border-t border-white/5">
