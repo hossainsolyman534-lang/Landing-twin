@@ -33,7 +33,11 @@ interface Content {
   originalPrice: number;
 }
 
-const AdminPanel: React.FC = () => {
+interface AdminPanelProps {
+  onBack?: () => void;
+}
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'content'>('orders');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -150,7 +154,15 @@ const AdminPanel: React.FC = () => {
             <Layout className="w-5 h-5" /> Content
           </button>
         </nav>
-        <div className="p-4 border-t border-slate-200">
+        <div className="p-4 border-t border-slate-200 space-y-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 rotate-180" /> Back to Site
+            </button>
+          )}
           <button
             onClick={() => auth.signOut()}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-colors"
@@ -282,7 +294,15 @@ const AdminPanel: React.FC = () => {
                 {products.map(product => (
                   <div key={product.id} className="bg-white p-6 rounded-2xl border border-slate-200 group relative">
                     <div className="aspect-square rounded-xl bg-slate-100 mb-4 overflow-hidden">
-                      <img src={product.imageUrl || 'https://picsum.photos/seed/dress/400/400'} alt={product.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={product.imageUrl || 'https://images.unsplash.com/photo-1621452773781-0f992fd1f5cb?auto=format&fit=crop&w=400&q=80'} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1621452773781-0f992fd1f5cb?auto=format&fit=crop&w=400&q=80";
+                        }}
+                      />
                     </div>
                     <h3 className="font-bold text-lg">{product.name}</h3>
                     <div className="flex justify-between items-center mt-2">

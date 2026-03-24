@@ -19,9 +19,12 @@ import {
   User as UserIcon,
   Ruler,
   LogIn,
-  Package
+  Package,
+  Facebook,
+  Instagram,
+  MessageCircle
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { db, auth, collection, doc, getDoc, getDocs, setDoc, onSnapshot, query, orderBy, signInWithPopup, googleProvider, OperationType, handleFirestoreError } from './firebase';
 import AdminPanel from './components/AdminPanel';
 
@@ -45,6 +48,7 @@ interface Content {
 export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [path, setPath] = useState(window.location.pathname);
   const [visitCount, setVisitCount] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
@@ -147,7 +151,7 @@ export default function App() {
     document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  if (path === '/admin') {
+  if (showAdmin || path === '/admin') {
     if (!isAdmin) {
       return (
         <div className="min-h-screen bg-rose-50 flex items-center justify-center p-4">
@@ -162,7 +166,7 @@ export default function App() {
               <LogIn className="w-5 h-5" /> Login with Google
             </button>
             <button
-              onClick={() => { window.location.pathname = '/'; }}
+              onClick={() => { setShowAdmin(false); window.history.pushState({}, '', '/'); setPath('/'); }}
               className="mt-4 text-slate-400 hover:text-rose-500 transition-colors"
             >
               Back to Home
@@ -171,11 +175,34 @@ export default function App() {
         </div>
       );
     }
-    return <AdminPanel />;
+    return <AdminPanel onBack={() => { setShowAdmin(false); window.history.pushState({}, '', '/'); setPath('/'); }} />;
   }
 
   // Section Components
   const HeroSection = () => {
+    const [currentImage, setCurrentImage] = useState(0);
+    const sliderImages = [
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_0.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_1.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_2.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_3.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_4.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_5.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_6.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_7.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_8.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_9.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_10.png",
+      "https://ais-dev-3vynmirhdlqrft35rpy3dg-733914356352.asia-southeast1.run.app/input_file_11.png",
+    ];
+
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setCurrentImage((prev) => (prev + 1) % sliderImages.length);
+      }, 3000);
+      return () => clearInterval(timer);
+    }, []);
+
     let headline = content.heroTitle;
     if (visitCount === 2 && !content.heroTitle.includes('গরমে')) headline = "গরমে বাচ্চার আরামের সেরা সমাধান – 100% কটন ড্রেস।";
     if (visitCount === 3 && !content.heroTitle.includes('ডেইলি')) headline = "ডেইলি ইউজের জন্য সবচেয়ে আরামদায়ক কিডস ড্রেস।";
@@ -208,6 +235,17 @@ export default function App() {
                   <ShoppingCart size={20} />
                   👉 এখনই অর্ডার করুন
                 </button>
+                <div className="flex items-center gap-3">
+                  <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all shadow-md">
+                    <Facebook size={18} />
+                  </a>
+                  <a href={`https://www.instagram.com/`} target="_blank" rel="noopener noreferrer" className="p-3 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white rounded-full hover:opacity-90 transition-all shadow-md">
+                    <Instagram size={18} />
+                  </a>
+                  <a href={`https://wa.me/?text=${encodeURIComponent("Check out this amazing kids dress collection! " + window.location.href)}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all shadow-md">
+                    <MessageCircle size={18} />
+                  </a>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -227,13 +265,20 @@ export default function App() {
             </motion.div>
 
           <div className="lg:w-1/2 relative">
-            <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl border-8 border-white">
-              <img 
-                src={products[0]?.imageUrl || "https://picsum.photos/seed/dress/800/800"} 
-                alt="Kids Cotton Dress" 
-                className="w-full h-auto object-cover"
-                referrerPolicy="no-referrer"
-              />
+            <div className="relative z-10 rounded-3xl overflow-hidden shadow-2xl border-8 border-white aspect-square">
+              <AnimatePresence mode="wait">
+                <motion.img 
+                  key={currentImage}
+                  src={sliderImages[currentImage]} 
+                  alt="Kids Cotton Dress" 
+                  className="w-full h-full object-cover absolute inset-0"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  referrerPolicy="no-referrer"
+                />
+              </AnimatePresence>
             </div>
             <div className="absolute -top-6 -right-6 bg-yellow-400 text-slate-900 font-black p-6 rounded-full shadow-xl z-20 transform rotate-12 animate-pulse">
               ৳{content.offerPrice}<br/><span className="text-xs line-through opacity-50">৳{content.originalPrice}</span>
@@ -289,10 +334,13 @@ export default function App() {
         <div className="flex flex-col lg:flex-row items-center gap-16">
           <div className="lg:w-1/2">
             <img 
-              src={products[1]?.imageUrl || "https://picsum.photos/seed/comfort/800/800"} 
+              src={products[1]?.imageUrl || "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=800&q=80"} 
               alt="Comfortable Cotton Dress" 
               className="rounded-3xl shadow-xl"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=800&q=80";
+              }}
             />
           </div>
           <div className="lg:w-1/2">
@@ -340,14 +388,25 @@ export default function App() {
             <motion.div 
               whileHover={{ scale: 1.02 }}
               key={prod.id} 
-              className="break-inside-avoid rounded-2xl overflow-hidden shadow-md bg-white p-2"
+              className="break-inside-avoid rounded-2xl overflow-hidden shadow-md bg-white p-2 relative group"
             >
               <img 
-                src={prod.imageUrl || `https://picsum.photos/seed/${prod.id}/400/600`} 
+                src={prod.imageUrl || `https://images.unsplash.com/photo-1621452773781-0f992fd1f5cb?auto=format&fit=crop&w=400&q=80`} 
                 alt={prod.name} 
                 className="w-full h-auto rounded-xl"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1621452773781-0f992fd1f5cb?auto=format&fit=crop&w=400&q=80";
+                }}
               />
+              <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all">
+                  <Facebook size={14} />
+                </a>
+                <a href={`https://wa.me/?text=${encodeURIComponent("Check out this " + prod.name + "! " + window.location.href)}`} target="_blank" rel="noopener noreferrer" className="p-2 bg-green-500 text-white rounded-full shadow-lg hover:bg-green-600 transition-all">
+                  <MessageCircle size={14} />
+                </a>
+              </div>
               <div className="p-4">
                 <h3 className="font-bold text-slate-800">{prod.name}</h3>
                 <p className="text-rose-600 font-bold">৳{prod.price}</p>
@@ -362,6 +421,52 @@ export default function App() {
           <p className="text-2xl font-bold text-slate-800">
             👉 আপনার বাচ্চা নিজেই পছন্দ করবে
           </p>
+        </div>
+      </div>
+    </section>
+  );
+
+  const ComboOfferSection = () => (
+    <section key="combo-offer" className="py-20 bg-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl lg:text-5xl font-black mb-4 text-slate-900">৩ পিস কম্বো অফার! 🎉</h2>
+          <p className="text-xl text-slate-600">আপনার বাচ্চার জন্য সেরা দামে সেরা কালেকশন</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {[
+            { age: "২-৬ বছর", price: 1190, regular: 1500, color: "bg-rose-500" },
+            { age: "৭-১০ বছর", price: 1290, regular: 1800, color: "bg-indigo-600" },
+            { age: "১১-১২ বছর", price: 1390, regular: 2100, color: "bg-slate-900" }
+          ].map((item, i) => (
+            <motion.div
+              whileHover={{ y: -10 }}
+              key={i}
+              className="bg-white rounded-[2rem] overflow-hidden shadow-2xl border border-slate-100 flex flex-col"
+            >
+              <div className={`${item.color} p-8 text-white text-center`}>
+                <h3 className="text-2xl font-bold mb-2">{item.age}</h3>
+                <p className="opacity-80">৩ পিস কম্বো সেট</p>
+              </div>
+              <div className="p-10 text-center flex-1 flex flex-col justify-center">
+                <div className="mb-6">
+                  <span className="text-5xl font-black text-slate-900">৳{item.price}</span>
+                  <div className="mt-2 text-slate-400 line-through text-lg">রেগুলার প্রাইস: ৳{item.regular}</div>
+                </div>
+                <ul className="text-slate-600 space-y-3 mb-8 text-left max-w-[200px] mx-auto">
+                  <li className="flex items-center gap-2"><CheckCircle size={16} className="text-green-500" /> ১০০% প্রিমিয়াম কটন</li>
+                  <li className="flex items-center gap-2"><CheckCircle size={16} className="text-green-500" /> আরামদায়ক ফেব্রিক্স</li>
+                  <li className="flex items-center gap-2"><CheckCircle size={16} className="text-green-500" /> কালার গ্যারান্টি</li>
+                </ul>
+                <button
+                  onClick={scrollToOrder}
+                  className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all ${item.color} hover:opacity-90`}
+                >
+                  অর্ডার করুন
+                </button>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
@@ -448,6 +553,7 @@ export default function App() {
           transition={{ repeat: Infinity, duration: 2 }}
         >
           <h2 className="text-4xl lg:text-5xl font-black mb-6">🎉 {content.offerText}</h2>
+          <p className="text-2xl font-bold mb-4 text-yellow-300">🎁 প্রতি সেটে পাবেন ১ জোড়া সুন্দর হাত ঘড়ি একদম ফ্রি!</p>
         </motion.div>
         <p className="text-xl mb-8 opacity-90">সীমিত সময়ের জন্য ডিসকাউন্ট! স্টক শেষ হওয়ার আগে অর্ডার করুন।</p>
         <div className="flex items-center justify-center gap-4 mb-8">
@@ -546,11 +652,10 @@ export default function App() {
                     value={formData.size}
                     onChange={(e) => setFormData({...formData, size: e.target.value})}
                   >
-                    <option>২-৪ বছর</option>
-                    <option>৪-৬ বছর</option>
-                    <option>৬-৮ বছর</option>
-                    <option>৮-১০ বছর</option>
-                    <option>১০-১২ বছর</option>
+                    <option value="">বয়স সিলেক্ট করুন</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(age => (
+                      <option key={age} value={`${age} বছর`}>{age} বছর</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -598,6 +703,7 @@ export default function App() {
         <div className="mt-20 pt-10 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-slate-500">© ২০২৬ লিটল প্রিন্সেস কালেকশন। সর্বস্বত্ব সংরক্ষিত।</p>
           <div className="flex gap-8 text-slate-500 text-sm">
+            <button onClick={() => setShowAdmin(true)} className="hover:text-white transition-colors">এডমিন লগইন</button>
             <a href="#" className="hover:text-white transition-colors">প্রাইভেসি পলিসি</a>
             <a href="#" className="hover:text-white transition-colors">রিফান্ড পলিসি</a>
             <a href="#" className="hover:text-white transition-colors">টার্মস এন্ড কন্ডিশন</a>
@@ -614,22 +720,23 @@ export default function App() {
       problem: <ProblemSection />,
       solution: <SolutionSection />,
       gallery: <GallerySection />,
+      combo: <ComboOfferSection />,
       details: <DetailsSection />,
       trust: <TrustSection />,
       offer: <OfferSection />,
       form: <OrderFormSection />,
     };
 
-    let order: (keyof typeof sections)[] = ['hero', 'problem', 'solution', 'gallery', 'details', 'trust', 'offer', 'form'];
+    let order: (keyof typeof sections)[] = ['hero', 'problem', 'solution', 'gallery', 'combo', 'details', 'trust', 'offer', 'form'];
 
     if (visitCount === 2) {
-      order = ['hero', 'gallery', 'problem', 'solution', 'details', 'trust', 'offer', 'form'];
+      order = ['hero', 'gallery', 'combo', 'problem', 'solution', 'details', 'trust', 'offer', 'form'];
     } else if (visitCount === 3) {
-      order = ['hero', 'solution', 'problem', 'gallery', 'details', 'trust', 'offer', 'form'];
+      order = ['hero', 'solution', 'combo', 'problem', 'gallery', 'details', 'trust', 'offer', 'form'];
     } else if (visitCount === 4) {
-      order = ['problem', 'hero', 'solution', 'gallery', 'details', 'trust', 'offer', 'form'];
+      order = ['problem', 'hero', 'solution', 'gallery', 'combo', 'details', 'trust', 'offer', 'form'];
     } else if (visitCount === 5) {
-      order = ['offer', 'hero', 'problem', 'solution', 'gallery', 'details', 'trust', 'form'];
+      order = ['offer', 'hero', 'problem', 'solution', 'gallery', 'combo', 'details', 'trust', 'form'];
     }
 
     return order.map(key => (
