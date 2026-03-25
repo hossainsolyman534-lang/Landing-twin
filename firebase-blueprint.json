@@ -1,0 +1,34 @@
+{
+  "entities": {
+    "lead": {
+      "title": "Lead",
+      "description": "Form submission from a potential customer",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "location": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone", "location", "timestamp"]
+    },
+    "setting": {
+      "title": "Setting",
+      "description": "Application settings like Pixel ID",
+      "type": "object",
+      "properties": {
+        "pixelId": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "lead",
+      "description": "Collection of customer leads"
+    },
+    "/settings/config": {
+      "schema": "setting",
+      "description": "Global application settings"
+    }
+  }
+}

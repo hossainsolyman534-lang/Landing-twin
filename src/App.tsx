@@ -10,9 +10,37 @@ import {
   ArrowRight,
   Calculator,
   DollarSign,
-  Briefcase
+  Briefcase,
+  Settings,
+  LogOut,
+  Trash2,
+  ExternalLink,
+  Lock,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  auth, 
+  db, 
+  googleProvider, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  addDoc, 
+  collection, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  deleteDoc,
+  OperationType,
+  handleFirestoreError,
+  User
+} from './firebase';
+
+const ADMIN_EMAIL = "hossainsolyman534@gmail.com";
 
 const CountUp = ({ value, duration = 1 }: { value: number; duration?: number }) => {
   const [count, setCount] = useState(0);
@@ -63,6 +91,134 @@ const FadeInSection = ({ children, className, id }: { children: React.ReactNode;
 export default function App() {
   const [investment, setInvestment] = useState<string>('');
   const [result, setResult] = useState<{ monthly: number; yearly: number } | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    location: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Admin & Settings State
+  const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [pixelId, setPixelId] = useState('');
+  const [newPixelId, setNewPixelId] = useState('');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAdmin(currentUser?.email === ADMIN_EMAIL);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch Pixel ID and Inject Script
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'config');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setPixelId(data.pixelId || '');
+          setNewPixelId(data.pixelId || '');
+          
+          if (data.pixelId) {
+            injectPixelScript(data.pixelId);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  // Fetch Leads for Admin
+  useEffect(() => {
+    if (isAdmin && showAdminPanel) {
+      const q = query(collection(db, 'leads'), orderBy('timestamp', 'desc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const leadsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLeads(leadsData);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'leads');
+      });
+      return () => unsubscribe();
+    }
+  }, [isAdmin, showAdminPanel]);
+
+  const injectPixelScript = (id: string) => {
+    if (!id || typeof window === 'undefined') return;
+    
+    // Check if already injected
+    if (document.getElementById('fb-pixel-script')) return;
+
+    const script = document.createElement('script');
+    script.id = 'fb-pixel-script';
+    script.innerHTML = `
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '${id}');
+      fbq('track', 'PageView');
+    `;
+    document.head.appendChild(script);
+
+    const noscript = document.createElement('noscript');
+    noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1" />`;
+    document.head.appendChild(noscript);
+  };
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login Error:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setShowAdminPanel(false);
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
+  };
+
+  const savePixelId = async () => {
+    if (!isAdmin) return;
+    setIsSavingSettings(true);
+    try {
+      await setDoc(doc(db, 'settings', 'config'), { pixelId: newPixelId });
+      setPixelId(newPixelId);
+      alert("Pixel ID সফলভাবে সেভ হয়েছে। পেজ রিফ্রেশ করুন।");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/config');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const deleteLead = async (id: string) => {
+    if (!isAdmin) return;
+    if (!confirm("আপনি কি নিশ্চিতভাবে এই লিডটি ডিলিট করতে চান?")) return;
+    try {
+      await deleteDoc(doc(db, 'leads', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `leads/${id}`);
+    }
+  };
 
   const calculateProfit = () => {
     const amount = parseFloat(investment);
@@ -75,10 +231,194 @@ export default function App() {
     setResult({ monthly, yearly });
   };
 
-  const submitForm = (e: React.FormEvent) => {
+  const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("ধন্যবাদ! আমরা আপনার সাথে যোগাযোগ করবো");
+    setIsSubmitting(true);
+
+    const sheetUrl = import.meta.env.VITE_GOOGLE_SHEET_URL;
+
+    if (!sheetUrl) {
+      // Fallback for demo if URL is not set
+      setTimeout(() => {
+        alert("ধন্যবাদ! আমরা আপনার সাথে যোগাযোগ করবো (Demo Mode: Google Sheet URL not set)");
+        setFormData({ name: '', phone: '', location: '' });
+        setIsSubmitting(false);
+      }, 1000);
+      return;
+    }
+
+    try {
+      // 1. Save to Firestore
+      await addDoc(collection(db, 'leads'), {
+        ...formData,
+        timestamp: new Date().toISOString()
+      });
+
+      // 2. Track with Pixel if available
+      if (window.fbq) {
+        window.fbq('track', 'Lead');
+      }
+
+      // 3. Send to Google Sheets (Original Logic)
+      const sheetUrl = import.meta.env.VITE_GOOGLE_SHEET_URL;
+      if (sheetUrl) {
+        await fetch(sheetUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, timestamp: new Date().toISOString() }),
+        });
+      }
+
+      alert("ধন্যবাদ! আপনার তথ্য সফলভাবে জমা হয়েছে।");
+      setFormData({ name: '', phone: '', location: '' });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert("দুঃখিত, তথ্য জমা দিতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (showAdminPanel && isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white font-sans p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-600 rounded-2xl">
+                <LayoutDashboard size={32} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-black">Admin Dashboard</h1>
+                <p className="text-slate-400">Manage leads and settings</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setShowAdminPanel(false)}
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all"
+              >
+                Back to Site
+              </button>
+              <button 
+                onClick={handleLogout}
+                className="px-6 py-3 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"
+              >
+                <LogOut size={20} /> Logout
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* SETTINGS */}
+            <div className="lg:col-span-1 space-y-8">
+              <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
+                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                  <Settings className="text-green-500" /> Pixel Settings
+                </h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Facebook Pixel ID</label>
+                    <input 
+                      type="text" 
+                      value={newPixelId}
+                      onChange={(e) => setNewPixelId(e.target.value)}
+                      placeholder="Enter Pixel ID"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                    />
+                  </div>
+                  <button 
+                    onClick={savePixelId}
+                    disabled={isSavingSettings}
+                    className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold transition-all disabled:opacity-50"
+                  >
+                    {isSavingSettings ? 'Saving...' : 'Save Pixel ID'}
+                  </button>
+                  {pixelId && (
+                    <p className="text-xs text-green-400 flex items-center gap-1">
+                      <CheckCircle size={12} /> Active Pixel: {pixelId}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
+                <h2 className="text-xl font-bold mb-4">Stats</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/5 rounded-2xl">
+                    <p className="text-slate-400 text-xs mb-1">Total Leads</p>
+                    <p className="text-2xl font-black">{leads.length}</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-2xl">
+                    <p className="text-slate-400 text-xs mb-1">Today</p>
+                    <p className="text-2xl font-black">
+                      {leads.filter(l => new Date(l.timestamp).toDateString() === new Date().toDateString()).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* LEADS LIST */}
+            <div className="lg:col-span-2">
+              <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
+                <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Users className="text-blue-500" /> Recent Leads
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-white/5 text-slate-400 text-sm">
+                        <th className="p-4 font-bold">Name</th>
+                        <th className="p-4 font-bold">Phone</th>
+                        <th className="p-4 font-bold">Location</th>
+                        <th className="p-4 font-bold">Date</th>
+                        <th className="p-4 font-bold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {leads.map((lead) => (
+                        <tr key={lead.id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-bold">{lead.name}</td>
+                          <td className="p-4">
+                            <a href={`tel:${lead.phone}`} className="text-blue-400 hover:underline flex items-center gap-1">
+                              {lead.phone} <ExternalLink size={12} />
+                            </a>
+                          </td>
+                          <td className="p-4 text-slate-400">{lead.location}</td>
+                          <td className="p-4 text-xs text-slate-500">
+                            {new Date(lead.timestamp).toLocaleString()}
+                          </td>
+                          <td className="p-4">
+                            <button 
+                              onClick={() => deleteLead(lead.id)}
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {leads.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="p-12 text-center text-slate-500">
+                            No leads found yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-green-100 selection:text-green-900">
@@ -529,6 +869,8 @@ export default function App() {
                     type="text" 
                     placeholder="আপনার নাম" 
                     required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
                   />
                 </div>
@@ -538,6 +880,8 @@ export default function App() {
                     type="text" 
                     placeholder="মোবাইল নাম্বার" 
                     required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
                   />
                 </div>
@@ -548,6 +892,8 @@ export default function App() {
                   type="text" 
                   placeholder="লোকেশন" 
                   required
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
                 />
               </div>
@@ -555,9 +901,15 @@ export default function App() {
                 whileHover={{ scale: 1.02, backgroundColor: "#15803d" }}
                 whileTap={{ scale: 0.98 }}
                 type="submit"
-                className="w-full py-5 bg-green-600 text-white font-black text-xl rounded-xl transition-all shadow-lg shadow-green-900/20"
+                disabled={isSubmitting}
+                className={`w-full py-5 bg-green-600 text-white font-black text-xl rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center justify-center gap-3 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                সাবমিট করুন
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    প্রসেসিং হচ্ছে...
+                  </>
+                ) : 'সাবমিট করুন'}
               </motion.button>
             </form>
           </div>
@@ -568,6 +920,33 @@ export default function App() {
       <footer className="py-10 bg-slate-950 text-slate-500 text-center border-t border-white/5">
         <div className="container mx-auto px-4">
           <p>© ২০২৬ সুপার শপ পার্টনারশিপ। সর্বস্বত্ব সংরক্ষিত।</p>
+          <div className="mt-6 flex justify-center gap-4">
+            {!user ? (
+              <button 
+                onClick={handleLogin}
+                className="text-xs text-slate-700 hover:text-slate-400 transition-colors flex items-center gap-1"
+              >
+                <Lock size={12} /> Admin Login
+              </button>
+            ) : (
+              <div className="flex items-center gap-4">
+                {isAdmin && (
+                  <button 
+                    onClick={() => setShowAdminPanel(true)}
+                    className="text-xs text-green-600 hover:text-green-400 transition-colors flex items-center gap-1"
+                  >
+                    <LayoutDashboard size={12} /> Admin Panel
+                  </button>
+                )}
+                <button 
+                  onClick={handleLogout}
+                  className="text-xs text-red-800 hover:text-red-600 transition-colors flex items-center gap-1"
+                >
+                  <LogOut size={12} /> Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </footer>
     </div>

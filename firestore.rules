@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: leads
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - phone: string (required)
+    //   - location: string (required)
+    //   - timestamp: string (required)
+    //
+    // Collection: settings
+    // Document ID: config
+    // Fields:
+    //   - pixelId: string (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "hossainsolyman534@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['name', 'phone', 'location', 'timestamp']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() < 20 &&
+             data.location is string && data.location.size() > 0 && data.location.size() < 200 &&
+             data.timestamp is string;
+    }
+
+    // Rules
+    match /leads/{leadId} {
+      allow create: if isValidLead(request.resource.data);
+      allow read, delete: if isAdmin();
+      allow update: if false; // Leads are immutable
+    }
+
+    match /settings/config {
+      allow read: if true; // Publicly readable to get Pixel ID
+      allow write: if isAdmin();
+    }
+  }
+}
