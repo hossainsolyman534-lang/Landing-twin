@@ -98,6 +98,9 @@ export default function App() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   
   // Admin & Settings State
   const [user, setUser] = useState<User | null>(null);
@@ -184,21 +187,23 @@ export default function App() {
     document.head.appendChild(noscript);
   };
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoggingIn(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       const loggedInUser = result.user;
       if (loggedInUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         setIsAdmin(true);
+        setShowLoginForm(false);
         alert("অ্যাডমিন হিসেবে লগইন সফল হয়েছে!");
       } else {
         alert(`আপনি ${loggedInUser.email} দিয়ে লগইন করেছেন, যা অ্যাডমিন ইমেইল নয়।`);
       }
     } catch (error: any) {
       console.error("Login Error:", error);
-      if (error.code === 'auth/popup-blocked') {
-        alert("আপনার ব্রাউজারে পপ-আপ ব্লক করা আছে। দয়া করে পপ-আপ অ্যালাউ করুন।");
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        alert("ইমেইল অথবা পাসওয়ার্ড ভুল। দয়া করে সঠিক তথ্য দিন।");
       } else {
         alert("লগইন করতে সমস্যা হয়েছে: " + error.message);
       }
@@ -940,18 +945,59 @@ export default function App() {
       <footer className="py-10 bg-slate-950 text-slate-500 text-center border-t border-white/5">
         <div className="container mx-auto px-4">
           <p>© ২০২৬ সুপার শপ পার্টনারশিপ। সর্বস্বত্ব সংরক্ষিত।</p>
-          <div className="mt-6 flex justify-center gap-4">
+          <div className="mt-6 flex flex-col items-center gap-4">
             {!user ? (
-              <button 
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="text-xs text-slate-700 hover:text-slate-400 transition-colors flex items-center gap-1 disabled:opacity-50"
-              >
-                {isLoggingIn ? (
-                  <div className="w-3 h-3 border border-slate-700 border-t-transparent rounded-full animate-spin"></div>
-                ) : <Lock size={12} />} 
-                {isLoggingIn ? 'Logging in...' : 'Admin Login'}
-              </button>
+              <>
+                {!showLoginForm ? (
+                  <button 
+                    onClick={() => setShowLoginForm(true)}
+                    className="text-xs text-slate-700 hover:text-slate-400 transition-colors flex items-center gap-1"
+                  >
+                    <Lock size={12} /> Admin Login
+                  </button>
+                ) : (
+                  <motion.form 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onSubmit={handleLogin}
+                    className="bg-white/5 p-6 rounded-2xl border border-white/10 w-full max-w-xs space-y-4"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-sm font-bold text-white">Admin Login</h3>
+                      <button 
+                        type="button"
+                        onClick={() => setShowLoginForm(false)}
+                        className="text-xs text-slate-500 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <input 
+                      type="email" 
+                      placeholder="Email" 
+                      required
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
+                    />
+                    <input 
+                      type="password" 
+                      placeholder="Password" 
+                      required
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={isLoggingIn}
+                      className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50"
+                    >
+                      {isLoggingIn ? 'Logging in...' : 'Login'}
+                    </button>
+                  </motion.form>
+                )}
+              </>
             ) : (
               <div className="flex items-center gap-4">
                 {isAdmin && (

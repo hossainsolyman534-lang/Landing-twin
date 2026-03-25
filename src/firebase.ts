@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, orderBy, deleteDoc } from 'firebase/firestore';
 
 // Import the Firebase configuration
@@ -63,5 +63,5 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, orderBy, deleteDoc };
+export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, orderBy, deleteDoc, signInWithEmailAndPassword };
 export type { User };
