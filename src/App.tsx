@@ -97,6 +97,7 @@ export default function App() {
     location: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   // Admin & Settings State
   const [user, setUser] = useState<User | null>(null);
@@ -111,7 +112,11 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setIsAdmin(currentUser?.email === ADMIN_EMAIL);
+      if (currentUser?.email) {
+        setIsAdmin(currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+      } else {
+        setIsAdmin(false);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -180,10 +185,25 @@ export default function App() {
   };
 
   const handleLogin = async () => {
+    setIsLoggingIn(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+      const result = await signInWithPopup(auth, googleProvider);
+      const loggedInUser = result.user;
+      if (loggedInUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        setIsAdmin(true);
+        alert("অ্যাডমিন হিসেবে লগইন সফল হয়েছে!");
+      } else {
+        alert(`আপনি ${loggedInUser.email} দিয়ে লগইন করেছেন, যা অ্যাডমিন ইমেইল নয়।`);
+      }
+    } catch (error: any) {
       console.error("Login Error:", error);
+      if (error.code === 'auth/popup-blocked') {
+        alert("আপনার ব্রাউজারে পপ-আপ ব্লক করা আছে। দয়া করে পপ-আপ অ্যালাউ করুন।");
+      } else {
+        alert("লগইন করতে সমস্যা হয়েছে: " + error.message);
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -924,9 +944,13 @@ export default function App() {
             {!user ? (
               <button 
                 onClick={handleLogin}
-                className="text-xs text-slate-700 hover:text-slate-400 transition-colors flex items-center gap-1"
+                disabled={isLoggingIn}
+                className="text-xs text-slate-700 hover:text-slate-400 transition-colors flex items-center gap-1 disabled:opacity-50"
               >
-                <Lock size={12} /> Admin Login
+                {isLoggingIn ? (
+                  <div className="w-3 h-3 border border-slate-700 border-t-transparent rounded-full animate-spin"></div>
+                ) : <Lock size={12} />} 
+                {isLoggingIn ? 'Logging in...' : 'Admin Login'}
               </button>
             ) : (
               <div className="flex items-center gap-4">
