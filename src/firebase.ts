@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, getDoc, addDoc, collection } from 'firebase/firestore';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
@@ -9,7 +9,6 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
 
 // Error Handling Function
 export enum OperationType {
@@ -63,5 +62,4 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, orderBy, deleteDoc, signInWithEmailAndPassword };
-export type { User };
+export { doc, getDoc, addDoc, collection };

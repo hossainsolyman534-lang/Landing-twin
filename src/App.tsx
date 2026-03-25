@@ -1,46 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
-  Users, 
-  ShoppingBag, 
-  MapPin, 
   CheckCircle, 
-  HelpCircle, 
   MessageCircle, 
   ArrowRight,
   Calculator,
   DollarSign,
-  Briefcase,
-  Settings,
-  LogOut,
-  Trash2,
-  ExternalLink,
-  Lock,
-  LayoutDashboard
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  auth, 
   db, 
-  googleProvider, 
-  signInWithPopup, 
-  signOut, 
-  onAuthStateChanged, 
   doc, 
   getDoc, 
-  setDoc, 
   addDoc, 
-  collection, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  deleteDoc,
-  OperationType,
-  handleFirestoreError,
-  User
+  collection
 } from './firebase';
-
-const ADMIN_EMAIL = "hossainsolyman534@gmail.com";
 
 const CountUp = ({ value, duration = 1 }: { value: number; duration?: number }) => {
   const [count, setCount] = useState(0);
@@ -97,32 +72,7 @@ export default function App() {
     location: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [showLoginForm, setShowLoginForm] = useState(false);
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  
-  // Admin & Settings State
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [leads, setLeads] = useState<any[]>([]);
   const [pixelId, setPixelId] = useState('');
-  const [newPixelId, setNewPixelId] = useState('');
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  // Auth Listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser?.email) {
-        setIsAdmin(currentUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-      } else {
-        setIsAdmin(false);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   // Fetch Pixel ID and Inject Script
   useEffect(() => {
@@ -133,8 +83,6 @@ export default function App() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           setPixelId(data.pixelId || '');
-          setNewPixelId(data.pixelId || '');
-          
           if (data.pixelId) {
             injectPixelScript(data.pixelId);
           }
@@ -146,24 +94,8 @@ export default function App() {
     fetchSettings();
   }, []);
 
-  // Fetch Leads for Admin
-  useEffect(() => {
-    if (isAdmin && showAdminPanel) {
-      const q = query(collection(db, 'leads'), orderBy('timestamp', 'desc'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const leadsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setLeads(leadsData);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'leads');
-      });
-      return () => unsubscribe();
-    }
-  }, [isAdmin, showAdminPanel]);
-
   const injectPixelScript = (id: string) => {
     if (!id || typeof window === 'undefined') return;
-    
-    // Check if already injected
     if (document.getElementById('fb-pixel-script')) return;
 
     const script = document.createElement('script');
@@ -187,64 +119,6 @@ export default function App() {
     document.head.appendChild(noscript);
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoggingIn(true);
-    try {
-      const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      const loggedInUser = result.user;
-      if (loggedInUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-        setIsAdmin(true);
-        setShowLoginForm(false);
-        alert("অ্যাডমিন হিসেবে লগইন সফল হয়েছে!");
-      } else {
-        alert(`আপনি ${loggedInUser.email} দিয়ে লগইন করেছেন, যা অ্যাডমিন ইমেইল নয়।`);
-      }
-    } catch (error: any) {
-      console.error("Login Error:", error);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        alert("ইমেইল অথবা পাসওয়ার্ড ভুল। দয়া করে সঠিক তথ্য দিন।");
-      } else {
-        alert("লগইন করতে সমস্যা হয়েছে: " + error.message);
-      }
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setShowAdminPanel(false);
-    } catch (error) {
-      console.error("Logout Error:", error);
-    }
-  };
-
-  const savePixelId = async () => {
-    if (!isAdmin) return;
-    setIsSavingSettings(true);
-    try {
-      await setDoc(doc(db, 'settings', 'config'), { pixelId: newPixelId });
-      setPixelId(newPixelId);
-      alert("Pixel ID সফলভাবে সেভ হয়েছে। পেজ রিফ্রেশ করুন।");
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'settings/config');
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  const deleteLead = async (id: string) => {
-    if (!isAdmin) return;
-    if (!confirm("আপনি কি নিশ্চিতভাবে এই লিডটি ডিলিট করতে চান?")) return;
-    try {
-      await deleteDoc(doc(db, 'leads', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `leads/${id}`);
-    }
-  };
-
   const calculateProfit = () => {
     const amount = parseFloat(investment);
     if (isNaN(amount) || amount <= 0) {
@@ -262,30 +136,19 @@ export default function App() {
 
     const sheetUrl = import.meta.env.VITE_GOOGLE_SHEET_URL;
 
-    if (!sheetUrl) {
-      // Fallback for demo if URL is not set
-      setTimeout(() => {
-        alert("ধন্যবাদ! আমরা আপনার সাথে যোগাযোগ করবো (Demo Mode: Google Sheet URL not set)");
-        setFormData({ name: '', phone: '', location: '' });
-        setIsSubmitting(false);
-      }, 1000);
-      return;
-    }
-
     try {
-      // 1. Save to Firestore
+      // 1. Save to Firestore (as backup)
       await addDoc(collection(db, 'leads'), {
         ...formData,
         timestamp: new Date().toISOString()
       });
 
-      // 2. Track with Pixel if available
+      // 2. Track with Pixel
       if (window.fbq) {
         window.fbq('track', 'Lead');
       }
 
-      // 3. Send to Google Sheets (Original Logic)
-      const sheetUrl = import.meta.env.VITE_GOOGLE_SHEET_URL;
+      // 3. Send to Google Sheets
       if (sheetUrl) {
         await fetch(sheetUrl, {
           method: 'POST',
@@ -305,146 +168,6 @@ export default function App() {
     }
   };
 
-  if (showAdminPanel && isAdmin) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white font-sans p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-600 rounded-2xl">
-                <LayoutDashboard size={32} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black">Admin Dashboard</h1>
-                <p className="text-slate-400">Manage leads and settings</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setShowAdminPanel(false)}
-                className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all"
-              >
-                Back to Site
-              </button>
-              <button 
-                onClick={handleLogout}
-                className="px-6 py-3 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-xl font-bold transition-all flex items-center gap-2"
-              >
-                <LogOut size={20} /> Logout
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* SETTINGS */}
-            <div className="lg:col-span-1 space-y-8">
-              <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
-                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                  <Settings className="text-green-500" /> Pixel Settings
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-slate-400 mb-2">Facebook Pixel ID</label>
-                    <input 
-                      type="text" 
-                      value={newPixelId}
-                      onChange={(e) => setNewPixelId(e.target.value)}
-                      placeholder="Enter Pixel ID"
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-green-500 transition-all"
-                    />
-                  </div>
-                  <button 
-                    onClick={savePixelId}
-                    disabled={isSavingSettings}
-                    className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-xl font-bold transition-all disabled:opacity-50"
-                  >
-                    {isSavingSettings ? 'Saving...' : 'Save Pixel ID'}
-                  </button>
-                  {pixelId && (
-                    <p className="text-xs text-green-400 flex items-center gap-1">
-                      <CheckCircle size={12} /> Active Pixel: {pixelId}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white/5 border border-white/10 p-8 rounded-3xl">
-                <h2 className="text-xl font-bold mb-4">Stats</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-white/5 rounded-2xl">
-                    <p className="text-slate-400 text-xs mb-1">Total Leads</p>
-                    <p className="text-2xl font-black">{leads.length}</p>
-                  </div>
-                  <div className="p-4 bg-white/5 rounded-2xl">
-                    <p className="text-slate-400 text-xs mb-1">Today</p>
-                    <p className="text-2xl font-black">
-                      {leads.filter(l => new Date(l.timestamp).toDateString() === new Date().toDateString()).length}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* LEADS LIST */}
-            <div className="lg:col-span-2">
-              <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
-                <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Users className="text-blue-500" /> Recent Leads
-                  </h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="bg-white/5 text-slate-400 text-sm">
-                        <th className="p-4 font-bold">Name</th>
-                        <th className="p-4 font-bold">Phone</th>
-                        <th className="p-4 font-bold">Location</th>
-                        <th className="p-4 font-bold">Date</th>
-                        <th className="p-4 font-bold">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {leads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-white/5 transition-colors">
-                          <td className="p-4 font-bold">{lead.name}</td>
-                          <td className="p-4">
-                            <a href={`tel:${lead.phone}`} className="text-blue-400 hover:underline flex items-center gap-1">
-                              {lead.phone} <ExternalLink size={12} />
-                            </a>
-                          </td>
-                          <td className="p-4 text-slate-400">{lead.location}</td>
-                          <td className="p-4 text-xs text-slate-500">
-                            {new Date(lead.timestamp).toLocaleString()}
-                          </td>
-                          <td className="p-4">
-                            <button 
-                              onClick={() => deleteLead(lead.id)}
-                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {leads.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="p-12 text-center text-slate-500">
-                            No leads found yet.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-green-100 selection:text-green-900">
       {/* HERO */}
@@ -454,13 +177,21 @@ export default function App() {
             initial={{ scale: 1.1 }}
             animate={{ scale: 1 }}
             transition={{ duration: 10, repeat: Infinity, repeatType: "reverse" }}
-            src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1920&q=80" 
+            src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1200&h=800" 
             alt="Super shop background" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
         </div>
         <div className="container mx-auto px-4 py-24 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="inline-block px-4 py-1.5 mb-6 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 font-bold text-sm uppercase tracking-widest"
+          >
+            একটি লাভজনক ব্যবসায়িক সুযোগ
+          </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -475,7 +206,7 @@ export default function App() {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="text-xl md:text-3xl text-slate-300 mb-12 max-w-3xl mx-auto space-y-3"
           >
-            <p className="font-medium">প্রথম মাস থেকেই আয় শুরু</p>
+            <p className="font-medium">আপনার বিনিয়োগ, আমাদের অভিজ্ঞতা — একসাথে গড়বো আগামীর সফল ব্যবসা।</p>
             <p className="text-green-400 font-black bg-green-400/10 py-2 px-6 rounded-full inline-block">👉 সীমিত স্লট — এখনই আবেদন করুন</p>
           </motion.div>
           <motion.div 
@@ -505,6 +236,36 @@ export default function App() {
           </motion.div>
         </div>
       </section>
+
+      {/* WHY SUPER SHOP BUSINESS? */}
+      <FadeInSection className="py-24 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-6">কেন <span className="text-green-600">সুপার শপ</span> ব্যবসা?</h2>
+            <p className="text-slate-500 text-lg max-w-2xl mx-auto">সুপার শপ বর্তমানে বাংলাদেশের অন্যতম দ্রুত বর্ধনশীল এবং নিরাপদ ব্যবসায়িক খাত।</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {[
+              { icon: "🛒", title: "নিত্যপ্রয়োজনীয় পণ্য", desc: "মানুষের প্রতিদিনের প্রয়োজনীয় পণ্য হওয়ায় এই ব্যবসায় মন্দার ভয় নেই।" },
+              { icon: "📈", title: "দ্রুত বর্ধনশীল মার্কেট", desc: "আধুনিক জীবনযাত্রার সাথে তাল মিলিয়ে সুপার শপের চাহিদা দিন দিন বাড়ছে।" },
+              { icon: "🛡️", title: "নিরাপদ বিনিয়োগ", desc: "ফিজিক্যাল ইনভেন্টরি এবং রানিং আউটলেট হওয়ায় আপনার বিনিয়োগ থাকে সুরক্ষিত।" },
+              { icon: "💰", title: "ক্যাশ বিজনেস", desc: "প্রতিদিনের টাকা প্রতিদিন হাতে আসে, ফলে ওয়ার্কিং ক্যাপিটাল নিয়ে চিন্তা থাকে না।" },
+              { icon: "🤝", title: "সামাজিক মর্যাদা", desc: "একটি আধুনিক সুপার শপের মালিক হওয়া আপনার সামাজিক মর্যাদা বৃদ্ধি করবে।" },
+              { icon: "🚀", title: "সহজ অপারেশন", desc: "আমাদের দক্ষ টিম আপনার হয়ে পুরো অপারেশনাল কাজগুলো পরিচালনা করবে।" }
+            ].map((item, i) => (
+              <motion.div 
+                key={i}
+                whileHover={{ y: -10 }}
+                className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 text-center"
+              >
+                <div className="text-5xl mb-6">{item.icon}</div>
+                <h3 className="text-xl font-black mb-4">{item.title}</h3>
+                <p className="text-slate-600 leading-relaxed text-sm">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </FadeInSection>
 
       {/* LOCATION & EXPANSION */}
       <FadeInSection className="py-20">
@@ -541,7 +302,7 @@ export default function App() {
                 <motion.img 
                   whileHover={{ scale: 1.02 }}
                   transition={{ duration: 0.5 }}
-                  src="https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1200&q=80" 
+                  src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1200&h=800" 
                   alt="Modern Supermarket" 
                   className="rounded-[2.5rem] shadow-2xl relative z-10"
                   referrerPolicy="no-referrer"
@@ -558,7 +319,7 @@ export default function App() {
       <FadeInSection className="py-20 bg-slate-950 text-white overflow-hidden relative">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
           <img 
-            src="https://images.unsplash.com/photo-1521791136364-798a7bc0d262?auto=format&fit=crop&w=1920&q=80" 
+            src="https://images.unsplash.com/photo-1521791136064-7986c29535ad?auto=format&fit=crop&q=80&w=1200&h=800" 
             alt="Collaboration Background" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
@@ -578,6 +339,15 @@ export default function App() {
               <ul className="space-y-6">
                 <li className="flex items-center gap-4 text-xl">
                   <span className="text-3xl">📊</span> লাভ হচ্ছে কি না, কত রিটার্ন আসছে
+                </li>
+                <li className="flex items-center gap-4 text-xl">
+                  <span className="text-3xl">📉</span> ব্যবসার ঝুঁকি কতটুকু
+                </li>
+                <li className="flex items-center gap-4 text-xl">
+                  <span className="text-3xl">⌛</span> টাকা কবে ফেরত পাওয়া যাবে
+                </li>
+                <li className="flex items-center gap-4 text-xl">
+                  <span className="text-3xl">😴</span> ব্যবসার দৈনন্দিন কাজ নিয়ে কোনো মাথাব্যথা নেই
                 </li>
               </ul>
             </motion.div>
@@ -613,410 +383,435 @@ export default function App() {
         </div>
       </FadeInSection>
 
-      {/* WHY PARTNERS? */}
-      <FadeInSection className="py-20 bg-white">
+      {/* PARTNERSHIP STEPS */}
+      <FadeInSection className="py-24 bg-white">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row gap-16 items-center max-w-6xl mx-auto">
-            <div className="lg:w-1/2">
-              <div className="relative">
-                <motion.img 
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ duration: 0.5 }}
-                  src="https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?auto=format&fit=crop&w=1000&q=80" 
-                  alt="Store Partnership" 
-                  className="rounded-[3rem] shadow-2xl"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl"></div>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-6">পার্টনারশিপের <span className="text-blue-600">ধাপসমূহ</span></h2>
+            <p className="text-slate-500 text-lg">খুব সহজেই আপনি আমাদের সাথে যুক্ত হতে পারেন।</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
+            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-blue-100 -z-0"></div>
+            {[
+              { step: "০১", title: "আবেদন", desc: "নিচের ফর্মটি পূরণ করে আপনার আগ্রহ প্রকাশ করুন।" },
+              { step: "০২", title: "আলোচনা", desc: "আমাদের টিম আপনার সাথে যোগাযোগ করবে এবং বিস্তারিত আলোচনা হবে।" },
+              { step: "০৩", title: "চুক্তি", desc: "আইনি প্রক্রিয়ার মাধ্যমে পার্টনারশিপ চুক্তি সম্পন্ন হবে।" },
+              { step: "০৪", title: "শুরু", desc: "প্রথম মাস থেকেই আপনি ব্যবসার লভ্যাংশ পেতে শুরু করবেন।" }
+            ].map((item, i) => (
+              <div key={i} className="relative z-10 bg-white p-8 rounded-3xl border border-slate-100 shadow-sm text-center">
+                <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-black mx-auto mb-6 shadow-lg">
+                  {item.step}
+                </div>
+                <h3 className="text-xl font-black mb-3">{item.title}</h3>
+                <p className="text-slate-500 text-sm">{item.desc}</p>
               </div>
-            </div>
-            <div className="lg:w-1/2">
-              <h2 className="text-3xl md:text-4xl font-black mb-8 flex items-center gap-3">
-                <Briefcase className="text-blue-600" /> কেন আমরা পার্টনার খুঁজছি?
-              </h2>
-              <p className="text-xl text-slate-600 mb-8">আমরা এমন মানুষদের সাথে কাজ করতে চাই—</p>
-              
-              <div className="space-y-4 mb-10">
-                {[
-                  "যারা নিজের ব্যবসা গড়তে চান",
-                  "যারা শুধু লাভ না, গ্রোথ বুঝেন",
-                  "যারা লোকাল মার্কেট নিয়ে কাজ করতে আগ্রহী"
-                ].map((text, i) => (
-                  <motion.div 
-                    key={i} 
-                    whileHover={{ x: 10 }}
-                    className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 transition-colors hover:bg-slate-100"
-                  >
-                    <CheckCircle className="text-green-600 shrink-0" size={24} />
-                    <p className="font-bold text-lg">{text}</p>
-                  </motion.div>
-                ))}
+            ))}
+          </div>
+        </div>
+      </FadeInSection>
+
+      {/* WHY PARTNERS? */}
+      <FadeInSection className="py-32 bg-slate-50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="order-2 lg:order-1">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <img 
+                      src="https://images.unsplash.com/photo-1573855619003-97b4799dcd8b?auto=format&fit=crop&q=80&w=600&h=400" 
+                      alt="Business 1" 
+                      className="rounded-3xl shadow-lg w-full h-64 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <img 
+                      src="https://images.unsplash.com/photo-1534452203294-45c851135f8a?auto=format&fit=crop&q=80&w=600&h=400" 
+                      alt="Business 2" 
+                      className="rounded-3xl shadow-lg w-full h-48 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="space-y-4 pt-8">
+                    <img 
+                      src="https://images.unsplash.com/photo-1566385101042-1a000c1267c4?auto=format&fit=crop&q=80&w=600&h=400" 
+                      alt="Business 3" 
+                      className="rounded-3xl shadow-lg w-full h-48 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <img 
+                      src="https://images.unsplash.com/photo-1556742049-02e1f6d0d0ee?auto=format&fit=crop&q=80&w=600&h=400" 
+                      alt="Business 4" 
+                      className="rounded-3xl shadow-lg w-full h-64 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                </div>
               </div>
-              
-              <div className="bg-blue-600 text-white p-8 rounded-3xl shadow-xl shadow-blue-900/20">
-                <p className="text-xl font-bold italic">
-                  "কারণ আমরা বিশ্বাস করি— <br/>
-                  👉 একজন committed পার্টনারই একটি আউটলেটকে দ্রুত সফল করতে পারে"
-                </p>
+              <div className="order-1 lg:order-2 space-y-8">
+                <h2 className="text-4xl md:text-6xl font-black leading-tight tracking-tighter">
+                  কেন আপনি আমাদের <br/> <span className="text-blue-600">পার্টনার হবেন?</span>
+                </h2>
+                <div className="space-y-6">
+                  {[
+                    { title: "নিজের ব্যবসা", desc: "অন্যের অধীনে নয়, নিজের একটি লাভজনক ব্যবসার মালিক হোন।" },
+                    { title: "গাইডলাইন ও সাপোর্ট", desc: "আমরা আপনাকে প্রতিটি ধাপে গাইড করবো এবং অপারেশনাল সাপোর্ট দিবো।" },
+                    { title: "লোকাল মার্কেট", desc: "আপনার এলাকার পরিচিত মার্কেটে ব্যবসা করার সুযোগ।" },
+                    { title: "স্বচ্ছতা ও জবাবদিহিতা", desc: "ব্যবসার প্রতিটি সিদ্ধান্তে আপনার মতামত এবং মাসিক প্রফিট রিপোর্ট ও অডিট।" }
+                  ].map((item, i) => (
+                    <div key={i} className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+                        <CheckCircle size={24} />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-black mb-1">{item.title}</h4>
+                        <p className="text-slate-500">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="pt-8">
+                  <h3 className="text-2xl font-black mb-6">আমাদের অপারেশনাল সাপোর্ট:</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      "সাপ্লাই চেইন ম্যানেজমেন্ট",
+                      "দক্ষ সেলস টিম",
+                      "মার্কেটিং ও প্রমোশন",
+                      "আইনি ও প্রশাসনিক সহায়তা",
+                      "ইনভেন্টরি কন্ট্রোল",
+                      "কাস্টমার সার্ভিস সাপোর্ট",
+                      "রিয়েল-টাইম সেলস ট্র্যাকিং",
+                      "প্রশিক্ষিত জনবল সরবরাহ"
+                    ].map((support, i) => (
+                      <div key={i} className="flex items-center gap-3 text-slate-700 font-medium">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        {support}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </FadeInSection>
 
-      {/* LEGAL SECURITY */}
-      <FadeInSection className="py-20 bg-slate-50">
-        <div className="container mx-auto px-4">
+      {/* LEGAL & SECURITY */}
+      <FadeInSection className="py-32 bg-slate-950 text-white overflow-hidden relative">
+        <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-black mb-6 flex items-center justify-center gap-3">
-                <CheckCircle className="text-blue-600" /> 🔒 আইনগত নিরাপত্তা ও চুক্তি ব্যবস্থা
+            <div className="text-center mb-20">
+              <h2 className="text-4xl md:text-7xl font-black mb-6 tracking-tighter">
+                আইনগত <span className="text-blue-500">নিরাপত্তা</span>
               </h2>
-              <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              <p className="text-xl text-slate-400 max-w-2xl mx-auto">
                 আমাদের সাথে পার্টনারশিপ সম্পূর্ণভাবে বাংলাদেশ সরকারের প্রচলিত আইন ও বিধিমালা অনুযায়ী পরিচালিত হবে।
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-200">
-                <h3 className="text-2xl font-black mb-8 flex items-center gap-2">
-                  <ArrowRight className="text-green-600" /> প্রতিটি পার্টনারের সাথে একটি লিখিত চুক্তি (Legal Agreement) করা হবে, যেখানে স্পষ্টভাবে উল্লেখ থাকবে:
-                </h3>
-                <ul className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="p-12 bg-white/5 rounded-[3rem] border border-white/10 backdrop-blur-sm">
+                <h3 className="text-3xl font-black mb-10 leading-tight">লিখিত চুক্তি (Legal Agreement)</h3>
+                <ul className="space-y-6">
                   {[
-                    { icon: "📄", text: "বিনিয়োগের পরিমাণ" },
-                    { icon: "📊", text: "প্রফিট ও শেয়ারিং মডেল" },
-                    { icon: "🏬", text: "আউটলেট পরিচালনার দায়িত্ব" },
-                    { icon: "⏳", text: "চুক্তির মেয়াদ" },
-                    { icon: "🔁", text: "শর্তাবলী ও দায়িত্বসমূহ" }
-                  ].map((item, i) => (
-                    <motion.li 
-                      key={i} 
-                      whileHover={{ scale: 1.02 }}
-                      className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 text-lg font-bold transition-colors hover:bg-slate-100"
-                    >
-                      <span className="text-2xl">{item.icon}</span> {item.text}
-                    </motion.li>
+                    "বিনিয়োগের পরিমাণ ও শেয়ারিং মডেল",
+                    "আউটলেট পরিচালনার দায়িত্ব ও সময়সীমা",
+                    "প্রফিট ডিস্ট্রিবিউশন পলিসি",
+                    "চুক্তির মেয়াদ ও নবায়ন শর্তাবলী",
+                    "স্বচ্ছ অডিট ও রিপোর্ট সিস্টেম",
+                    "পারস্পরিক সমঝোতার ভিত্তিতে এক্সিট পলিসি",
+                    "ট্রেড লাইসেন্স ও টিআইএন (TIN) সংক্রান্ত তথ্যাদি",
+                    "ব্যাংক একাউন্ট ও ট্রানজেকশন স্বচ্ছতা নিশ্চিতকরণ"
+                  ].map((text, i) => (
+                    <li key={i} className="flex items-center gap-4 text-lg font-medium text-slate-300">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      {text}
+                    </li>
                   ))}
                 </ul>
               </div>
-
-              <div className="space-y-8">
-                <div className="relative group">
-                  <motion.img 
-                    whileHover={{ scale: 1.02 }}
-                    transition={{ duration: 0.5 }}
-                    src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80" 
-                    alt="Legal Contract" 
-                    className="rounded-[2.5rem] shadow-2xl"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-blue-600/10 rounded-[2.5rem] pointer-events-none"></div>
-                </div>
-
-                <div className="bg-blue-600 text-white p-10 rounded-[2.5rem] shadow-xl">
-                  <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
-                    🤝 আপনার নিরাপত্তা, আমাদের অঙ্গীকার
-                  </h3>
-                  <p className="mb-8 text-blue-100">আমরা বিশ্বাস করি একটি সফল পার্টনারশিপের ভিত্তি হচ্ছে স্বচ্ছতা (Transparency) এবং বিশ্বাস (Trust)</p>
-                  <ul className="space-y-4">
-                    {[
-                      "প্রতিটি শর্ত পরিষ্কারভাবে লিখিত থাকবে",
-                      "কোন হিডেন কন্ডিশন থাকবে না",
-                      "পার্টনার হিসেবে আপনার অধিকার সংরক্ষিত থাকবে",
-                      "প্রয়োজন হলে সরাসরি আলোচনা ও ক্ল্যারিফিকেশন করা যাবে"
-                    ].map((text, i) => (
-                      <li key={i} className="flex items-center gap-3">
-                        <CheckCircle className="text-blue-300 shrink-0" size={20} />
-                        <span>{text}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="bg-white p-8 rounded-3xl border border-slate-200">
-                  <h3 className="text-xl font-black mb-4 flex items-center gap-2">
-                    🛡️ কেন এটি গুরুত্বপূর্ণ?
-                  </h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    অনেক সময় অনানুষ্ঠানিকভাবে ব্যবসা শুরু হলে ভবিষ্যতে ভুল বোঝাবুঝি তৈরি হয়। <br/>
-                    <span className="font-bold text-slate-900 mt-2 block">👉 আমরা সেই ঝুঁকি এড়াতে শুরু থেকেই একটি স্ট্রাকচার্ড ও লিগ্যাল ফ্রেমওয়ার্কে কাজ করি</span>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </FadeInSection>
-
-      {/* INVESTMENT */}
-      <FadeInSection className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto bg-slate-900 text-white rounded-[2.5rem] p-10 md:p-16 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-green-600/20 blur-[100px]"></div>
-            <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
-              <div className="flex-1">
-                <h2 className="text-3xl md:text-4xl font-black mb-8">ইনভেস্টমেন্ট</h2>
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-green-400">
-                      <DollarSign size={24} />
-                    </div>
-                    <div>
-                      <p className="text-slate-400 text-sm">মিনিমাম ইনভেস্ট</p>
-                      <p className="text-2xl font-bold">৳১,০০,০০০</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-blue-400">
-                      <TrendingUp size={24} />
-                    </div>
-                    <div>
-                      <p className="text-slate-400 text-sm">আনুমানিক প্রফিট</p>
-                      <p className="text-2xl font-bold">~১১% মাসিক</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1">
-                <motion.img 
-                  whileHover={{ scale: 1.05, rotate: 2 }}
-                  transition={{ duration: 0.5 }}
-                  src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80" 
-                  alt="Business partnership" 
-                  className="rounded-2xl shadow-2xl"
+              <div className="relative group">
+                <img 
+                  src="https://images.unsplash.com/photo-1450175849256-0233409d9bb4?auto=format&fit=crop&q=80&w=800&h=600" 
+                  alt="Legal" 
+                  className="rounded-[3rem] shadow-2xl h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
+                <div className="absolute inset-0 bg-blue-600/20 rounded-[3rem] mix-blend-overlay"></div>
               </div>
             </div>
           </div>
         </div>
       </FadeInSection>
 
-      {/* PROFIT CALCULATOR */}
-      <FadeInSection className="py-20 bg-slate-100">
+      {/* INVESTMENT & CALCULATOR */}
+      <FadeInSection className="py-32 bg-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto bg-white p-10 md:p-16 rounded-[2.5rem] shadow-xl border border-slate-200">
-            <h2 className="text-3xl md:text-4xl font-black mb-8 text-center flex items-center justify-center gap-3">
-              <Calculator className="text-blue-600" /> প্রফিট ক্যালকুলেটর
-            </h2>
-            <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-stretch">
+            <div className="bg-slate-900 rounded-[3rem] p-12 text-white flex flex-col justify-between">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">আপনার ইনভেস্টমেন্ট (৳)</label>
-                <input 
-                  type="number" 
-                  value={investment}
-                  onChange={(e) => setInvestment(e.target.value)}
-                  placeholder="যেমন: 100000"
-                  className="w-full px-6 py-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                />
-              </div>
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={calculateProfit}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/20"
-              >
-                ক্যালকুলেট করুন
-              </motion.button>
-              
-              {result && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mt-8 p-6 bg-blue-50 rounded-2xl border border-blue-100"
-                >
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-blue-600 text-sm mb-1">মাসিক প্রফিট</p>
-                      <p className="text-2xl font-black text-blue-900">৳<CountUp value={result.monthly} /></p>
+                <h2 className="text-4xl md:text-6xl font-black mb-8 tracking-tighter">বিনিয়োগ ও <br/> <span className="text-green-500 italic">মুনাফা</span></h2>
+                <div className="space-y-8 mb-12">
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center text-green-400">
+                      <DollarSign size={32} />
                     </div>
                     <div>
-                      <p className="text-blue-600 text-sm mb-1">বার্ষিক প্রফিট</p>
-                      <p className="text-2xl font-black text-blue-900">৳<CountUp value={result.yearly} /></p>
+                      <p className="text-slate-400 font-bold uppercase text-xs tracking-widest mb-1">মিনিমাম ইনভেস্ট</p>
+                      <p className="text-4xl font-black">৳১,০০,০০০</p>
                     </div>
                   </div>
-                </motion.div>
-              )}
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-white/10 rounded-3xl flex items-center justify-center text-blue-400">
+                      <TrendingUp size={32} />
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-bold uppercase text-xs tracking-widest mb-1">মাসিক মুনাফা</p>
+                      <p className="text-4xl font-black">~১১%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-8 bg-white/5 rounded-3xl border border-white/10">
+                <p className="text-slate-400 leading-relaxed">
+                  আপনার বিনিয়োগ সরাসরি আউটলেটের ইনভেন্টরি, ডেকোরেশন এবং অপারেশনে ব্যবহৃত হবে। আমরা প্রতিটি টাকার হিসাব স্বচ্ছতার সাথে প্রদান করি এবং মাসিক ভিত্তিতে প্রফিট ডিস্ট্রিবিউশন নিশ্চিত করি।
+                </p>
+                <p className="mt-4 text-green-400 font-bold">
+                  📌 গত ১.৫ বছরের অভিজ্ঞতায় আমরা আমাদের ইনভেস্টরদের নিয়মিত প্রফিট প্রদান করে আসছি।
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-[3rem] p-12 border border-slate-100 shadow-sm">
+              <h3 className="text-3xl font-black mb-8 flex items-center gap-3">
+                <Calculator className="text-blue-600" /> প্রফিট ক্যালকুলেটর
+              </h3>
+              <div className="space-y-8">
+                <div>
+                  <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-3">আপনার ইনভেস্টমেন্ট (৳)</label>
+                  <input 
+                    type="number" 
+                    value={investment}
+                    onChange={(e) => setInvestment(e.target.value)}
+                    placeholder="যেমন: 100000"
+                    className="w-full px-8 py-6 rounded-2xl bg-white border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-2xl font-black"
+                  />
+                </div>
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={calculateProfit}
+                  className="w-full py-6 bg-blue-600 hover:bg-blue-700 text-white font-black text-xl rounded-2xl transition-all shadow-xl shadow-blue-900/20"
+                >
+                  হিসাব করুন
+                </motion.button>
+                
+                <AnimatePresence>
+                  {result && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      className="grid grid-cols-2 gap-6"
+                    >
+                      <div className="p-8 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-2">মাসিক</p>
+                        <p className="text-3xl font-black text-blue-600">৳<CountUp value={result.monthly} /></p>
+                      </div>
+                      <div className="p-8 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-2">বার্ষিক</p>
+                        <p className="text-3xl font-black text-green-600">৳<CountUp value={result.yearly} /></p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FadeInSection>
+
+      {/* VISION & MISSION */}
+      <FadeInSection className="py-24 bg-slate-50">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-5xl font-black mb-12">আমাদের <span className="text-green-600">ভিশন ও লক্ষ্য</span></h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="p-10 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
+                <div className="text-4xl mb-6">🎯</div>
+                <h3 className="text-2xl font-black mb-4">আমাদের লক্ষ্য</h3>
+                <p className="text-slate-600">আগামী ১৮ মাসের মধ্যে ঢাকা শহরের প্রতিটি গুরুত্বপূর্ণ মোড়ে আমাদের সুপার শপের উপস্থিতি নিশ্চিত করা এবং সাধারণ মানুষের কাছে মানসম্মত পণ্য পৌঁছে দেওয়া।</p>
+              </div>
+              <div className="p-10 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
+                <div className="text-4xl mb-6">🚀</div>
+                <h3 className="text-2xl font-black mb-4">আমাদের ভিশন</h3>
+                <p className="text-slate-600">একটি শক্তিশালী রিটেইল নেটওয়ার্ক গড়ে তোলা যেখানে পার্টনাররা শুধু বিনিয়োগকারী নন, বরং ব্যবসার প্রকৃত অংশীদার হিসেবে সফল হবেন।</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FadeInSection>
+
+      {/* TRANSPARENCY & TRUST */}
+      <FadeInSection className="py-24 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-blue-600 rounded-[3rem] p-12 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-3xl rounded-full -mr-32 -mt-32"></div>
+              <div className="relative z-10">
+                <h2 className="text-3xl md:text-5xl font-black mb-8">স্বচ্ছতা ও <span className="text-blue-200 italic">জবাবদিহিতা</span></h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <div className="space-y-6">
+                    <p className="text-xl text-blue-50 leading-relaxed">
+                      আমরা বিশ্বাস করি একটি সফল পার্টনারশিপের মূল ভিত্তি হলো স্বচ্ছতা। তাই আমরা প্রতিটি পার্টনারকে প্রদান করি:
+                    </p>
+                    <ul className="space-y-4">
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="text-blue-300" size={20} /> মাসিক সেলস ও প্রফিট রিপোর্ট
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="text-blue-300" size={20} /> ইনভেন্টরি ম্যানেজমেন্ট এক্সেস
+                      </li>
+                      <li className="flex items-center gap-3">
+                        <CheckCircle className="text-blue-300" size={20} /> সরাসরি আউটলেট ভিজিটের সুযোগ
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20">
+                    <p className="text-blue-100 italic">
+                      "আমাদের লক্ষ্য শুধু ব্যবসা করা নয়, বরং একটি বিশ্বস্ত কমিউনিটি গড়ে তোলা যেখানে সবাই একসাথে লাভবান হবে।"
+                    </p>
+                    <p className="mt-4 font-bold">— ম্যানেজমেন্ট টিম</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </FadeInSection>
 
       {/* FAQ */}
-      <FadeInSection className="py-20">
+      <FadeInSection className="py-32 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-black mb-12 text-center flex items-center justify-center gap-3">
-            <HelpCircle className="text-purple-600" /> প্রশ্ন ও উত্তর
-          </h2>
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-3xl mx-auto text-center mb-20">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6">সাধারণ <span className="text-purple-600 italic">জিজ্ঞাসা</span></h2>
+            <p className="text-slate-500 text-lg">আপনার মনে থাকা কিছু সাধারণ প্রশ্নের উত্তর এখানে দেওয়া হলো।</p>
+          </div>
+          <div className="max-w-3xl mx-auto space-y-4">
             {[
-              { q: "এটা কি ইনভেস্টমেন্ট নাকি ব্যবসা?", a: "এটা সরাসরি পার্টনারশিপ ব্যবসা। আপনি নিজেই চালাবেন।" },
-              { q: "মিনিমাম কত টাকা লাগবে?", a: "৳১,০০,০০০" },
-              { q: "আমি কি নতুন হলেও পারবো?", a: "হ্যাঁ, আমরা গাইডলাইন দিবো" },
-              { q: "প্রফিট কত হতে পারে?", a: "গড়ে ~১১% (পারফরম্যান্স অনুযায়ী পরিবর্তন হতে পারে)" }
+              { q: "এটা কি ইনভেস্টমেন্ট নাকি ব্যবসা?", a: "এটা সরাসরি পার্টনারশিপ ব্যবসা। আপনি ব্যবসার অংশীদার হিসেবে যুক্ত হচ্ছেন।" },
+              { q: "মিনিমাম কত টাকা লাগবে?", a: "৳১,০০,০০০ থেকে আপনি শুরু করতে পারবেন।" },
+              { q: "আমি কি নতুন হলেও পারবো?", a: "হ্যাঁ, আমরা আপনাকে সম্পূর্ণ গাইডলাইন এবং অপারেশনাল সাপোর্ট প্রদান করবো।" },
+              { q: "প্রফিট কত হতে পারে?", a: "গড়ে ~১১% মাসিক মুনাফা হতে পারে, যা আউটলেটের পারফরম্যান্স অনুযায়ী পরিবর্তনশীল।" },
+              { q: "চুক্তির মেয়াদ কতদিন?", a: "প্রাথমিকভাবে চুক্তির মেয়াদ ২ বছর, যা পরবর্তীতে আলোচনার ভিত্তিতে নবায়ন করা যাবে।" },
+              { q: "টাকা ফেরত নিতে চাইলে কি করতে হবে?", a: "আমাদের একটি নির্দিষ্ট এক্সিট পলিসি রয়েছে। ৩ মাস আগে নোটিশ প্রদান করে আপনি আপনার মূলধন ফেরত নিতে পারবেন।" },
+              { q: "আমি কি ব্যবসার সিদ্ধান্ত নিতে পারবো?", a: "হ্যাঁ, পার্টনার হিসেবে আপনি গুরুত্বপূর্ণ ব্যবসায়িক সিদ্ধান্তগুলোতে অংশ নিতে পারবেন।" },
+              { q: "ব্যবসার ঝুঁকি কেমন?", a: "যেকোনো ব্যবসায় ঝুঁকি থাকে, তবে আমাদের ১.৫ বছরের অভিজ্ঞতা এবং রানিং আউটলেট হওয়ায় ঝুঁকি অনেক কম।" }
             ].map((item, i) => (
-              <motion.div 
-                key={i} 
-                whileHover={{ y: -5 }}
-                className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 transition-shadow hover:shadow-md"
-              >
-                <h3 className="text-lg font-bold mb-3 flex items-start gap-3">
-                  <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-xs shrink-0 mt-1">Q</span>
+              <div key={i} className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100">
+                <h3 className="text-xl font-black mb-3 flex items-start gap-4">
+                  <span className="w-8 h-8 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-black shrink-0">Q</span>
                   {item.q}
                 </h3>
-                <p className="text-slate-600 pl-9">{item.a}</p>
-              </motion.div>
+                <p className="text-slate-600 pl-12 leading-relaxed">{item.a}</p>
+              </div>
             ))}
           </div>
         </div>
       </FadeInSection>
 
-      {/* FORM */}
-      <FadeInSection id="form" className="py-20 bg-slate-900 text-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-12">
-              <p className="text-blue-400 font-black text-2xl md:text-3xl mb-6">
-                📌 আপনি শুধু একটি ব্যবসায় যোগ দিচ্ছেন না—আপনি একটি সুরক্ষিত, স্বচ্ছ এবং পরিকল্পিত পার্টনারশিপে যুক্ত হচ্ছেন।
-              </p>
-              <p className="text-orange-400 font-black text-xl md:text-2xl mb-8">
-                🔥 আজ আপনি একজন পার্টনার হিসেবে শুরু করলে, আগামী ১৮ মাসে একটি বড় সুপার শপ নেটওয়ার্কের অংশ হতে পারবেন।
-              </p>
-              <h2 className="text-3xl md:text-4xl font-black mb-4">পার্টনার হতে আবেদন করুন</h2>
-              <p className="text-slate-400 text-lg">আপনার তথ্য দিন, আমরা আপনার সাথে যোগাযোগ করবো।</p>
+      {/* FORM SECTION */}
+      <FadeInSection id="form" className="py-32 bg-slate-950 text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <img 
+            src="https://images.unsplash.com/photo-1580913209323-6f73d1e72023?auto=format&fit=crop&q=80&w=1200&h=800" 
+            alt="Form BG" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+            <div className="space-y-8">
+              <h2 className="text-5xl md:text-8xl font-black leading-[0.9] tracking-tighter">
+                আজই <br/> <span className="text-green-500">শুরু</span> করুন
+              </h2>
+              <div className="space-y-6">
+                <p className="text-2xl font-bold text-blue-400">📌 আপনি শুধু একটি ব্যবসায় যোগ দিচ্ছেন না—আপনি একটি সুরক্ষিত পার্টনারশিপে যুক্ত হচ্ছেন।</p>
+                <p className="text-xl text-slate-400">আগামী ১৮ মাসে একটি বড় সুপার শপ নেটওয়ার্কের অংশ হতে আপনার তথ্য দিয়ে আবেদন করুন।</p>
+              </div>
             </div>
-            <form onSubmit={submitForm} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-bold text-slate-400 mb-2">আপনার নাম</label>
+            <div className="bg-white rounded-[3rem] p-12 text-slate-900 shadow-2xl">
+              <form onSubmit={submitForm} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">আপনার নাম</label>
                   <input 
                     type="text" 
                     placeholder="আপনার নাম" 
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
+                    className="w-full px-8 py-5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-lg font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-400 mb-2">মোবাইল নাম্বার</label>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">মোবাইল নাম্বার</label>
                   <input 
                     type="text" 
                     placeholder="মোবাইল নাম্বার" 
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
+                    className="w-full px-8 py-5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-lg font-bold"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-400 mb-2">লোকেশন</label>
-                <input 
-                  type="text" 
-                  placeholder="লোকেশন" 
-                  required
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-6 py-4 bg-white/10 border border-white/10 rounded-xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-white"
-                />
-              </div>
-              <motion.button 
-                whileHover={{ scale: 1.02, backgroundColor: "#15803d" }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isSubmitting}
-                className={`w-full py-5 bg-green-600 text-white font-black text-xl rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center justify-center gap-3 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    প্রসেসিং হচ্ছে...
-                  </>
-                ) : 'সাবমিট করুন'}
-              </motion.button>
-            </form>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">লোকেশন</label>
+                  <input 
+                    type="text" 
+                    placeholder="লোকেশন" 
+                    required
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="w-full px-8 py-5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-green-500 outline-none transition-all text-lg font-bold"
+                  />
+                </div>
+                <motion.button 
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-6 bg-green-600 text-white font-black text-xl rounded-2xl transition-all shadow-xl shadow-green-900/20 flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'প্রসেসিং হচ্ছে...' : 'আবেদন জমা দিন'}
+                </motion.button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </FadeInSection>
+
+      {/* CONTACT INFO */}
+      <FadeInSection className="py-20 bg-slate-50">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-black mb-12">সরাসরি যোগাযোগ করুন</h2>
+          <div className="flex flex-wrap justify-center gap-8">
+            <div className="flex items-center gap-3 bg-white px-8 py-4 rounded-2xl shadow-sm border border-slate-100">
+              <MapPin className="text-red-600" />
+              <span className="font-bold">উত্তরা, ঢাকা</span>
+            </div>
+            <div className="flex items-center gap-3 bg-white px-8 py-4 rounded-2xl shadow-sm border border-slate-100">
+              <MessageCircle className="text-green-600" />
+              <span className="font-bold">+৮৮০ ১৯১১১১০৪৭৬</span>
+            </div>
           </div>
         </div>
       </FadeInSection>
 
       {/* FOOTER */}
-      <footer className="py-10 bg-slate-950 text-slate-500 text-center border-t border-white/5">
+      <footer className="py-20 bg-slate-950 text-slate-500 text-center border-t border-white/5">
         <div className="container mx-auto px-4">
-          <p>© ২০২৬ সুপার শপ পার্টনারশিপ। সর্বস্বত্ব সংরক্ষিত।</p>
-          <div className="mt-6 flex flex-col items-center gap-4">
-            {!user ? (
-              <>
-                {!showLoginForm ? (
-                  <button 
-                    onClick={() => setShowLoginForm(true)}
-                    className="text-xs text-slate-700 hover:text-slate-400 transition-colors flex items-center gap-1"
-                  >
-                    <Lock size={12} /> Admin Login
-                  </button>
-                ) : (
-                  <motion.form 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onSubmit={handleLogin}
-                    className="bg-white/5 p-6 rounded-2xl border border-white/10 w-full max-w-xs space-y-4"
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="text-sm font-bold text-white">Admin Login</h3>
-                      <button 
-                        type="button"
-                        onClick={() => setShowLoginForm(false)}
-                        className="text-xs text-slate-500 hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    <input 
-                      type="email" 
-                      placeholder="Email" 
-                      required
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
-                    />
-                    <input 
-                      type="password" 
-                      placeholder="Password" 
-                      required
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white outline-none focus:ring-1 focus:ring-green-500"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={isLoggingIn}
-                      className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-sm transition-all disabled:opacity-50"
-                    >
-                      {isLoggingIn ? 'Logging in...' : 'Login'}
-                    </button>
-                  </motion.form>
-                )}
-              </>
-            ) : (
-              <div className="flex items-center gap-4">
-                {isAdmin && (
-                  <button 
-                    onClick={() => setShowAdminPanel(true)}
-                    className="text-xs text-green-600 hover:text-green-400 transition-colors flex items-center gap-1"
-                  >
-                    <LayoutDashboard size={12} /> Admin Panel
-                  </button>
-                )}
-                <button 
-                  onClick={handleLogout}
-                  className="text-xs text-red-800 hover:text-red-600 transition-colors flex items-center gap-1"
-                >
-                  <LogOut size={12} /> Logout
-                </button>
-              </div>
-            )}
-          </div>
+          <p className="text-sm font-medium tracking-widest uppercase">© ২০২৬ সুপার শপ পার্টনারশিপ। সর্বস্বত্ব সংরক্ষিত।</p>
         </div>
       </footer>
     </div>
